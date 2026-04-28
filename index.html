@@ -1303,7 +1303,7 @@
             <div class="kpi-sub" id="kpiSalePriceHkd">—</div>
           </div>
           <div class="kpi accent">
-            <div class="kpi-label"><span class="ja">着金ネット</span><span class="en">Net Proceeds</span></div>
+            <div class="kpi-label"><span class="ja net-label-ja">香港着金ネット</span><span class="en net-label-en">Net to HK</span></div>
             <div class="kpi-value" id="kpiNetHkd">—</div>
             <div class="kpi-sub" id="kpiNetAed">— AED</div>
           </div>
@@ -1334,21 +1334,21 @@
               <div class="scenario-desc"><span class="ja">44%支払完了後NOC取得 / 2年保有</span><span class="en">NOC after ≥44% paid / 2-yr hold</span></div>
               <div class="scenario-metric"><span><span class="ja">累計リターン</span><span class="en">Total Return</span></span><span class="val" id="s1Return">—</span></div>
               <div class="scenario-metric"><span><span class="ja">年率 IRR</span><span class="en">IRR p.a.</span></span><span class="val" id="s1Irr">—</span></div>
-              <div class="scenario-metric"><span><span class="ja">HK着金ネット</span><span class="en">Net to HK</span></span><span class="val" id="s1Net">—</span></div>
+              <div class="scenario-metric"><span><span class="ja net-label-ja">香港着金ネット</span><span class="en net-label-en">Net to HK</span></span><span class="val" id="s1Net">—</span></div>
             </div>
             <div class="scenario s2">
               <div class="scenario-title"><span class="ja">シナリオ② 引渡後・短期売却</span><span class="en">(2) Post-Handover Short</span></div>
               <div class="scenario-desc"><span class="ja">鍵受取後12ヶ月売却 / 3〜4年保有</span><span class="en">Sell 12 mo after keys / 3–4 yr</span></div>
               <div class="scenario-metric"><span><span class="ja">累計リターン</span><span class="en">Total Return</span></span><span class="val" id="s2Return">—</span></div>
               <div class="scenario-metric"><span><span class="ja">年率 IRR</span><span class="en">IRR p.a.</span></span><span class="val" id="s2Irr">—</span></div>
-              <div class="scenario-metric"><span><span class="ja">HK着金ネット</span><span class="en">Net to HK</span></span><span class="val" id="s2Net">—</span></div>
+              <div class="scenario-metric"><span><span class="ja net-label-ja">香港着金ネット</span><span class="en net-label-en">Net to HK</span></span><span class="val" id="s2Net">—</span></div>
             </div>
             <div class="scenario s3">
               <div class="scenario-title"><span class="ja">シナリオ③ 中長期保有</span><span class="en">(3) Long-Term Hold</span></div>
               <div class="scenario-desc"><span class="ja">インカム＋キャピタル / 7年保有</span><span class="en">Income + capital / 7-yr hold</span></div>
               <div class="scenario-metric"><span><span class="ja">累計リターン</span><span class="en">Total Return</span></span><span class="val" id="s3Return">—</span></div>
               <div class="scenario-metric"><span><span class="ja">年率 IRR</span><span class="en">IRR p.a.</span></span><span class="val" id="s3Irr">—</span></div>
-              <div class="scenario-metric"><span><span class="ja">HK着金ネット</span><span class="en">Net to HK</span></span><span class="val" id="s3Net">—</span></div>
+              <div class="scenario-metric"><span><span class="ja net-label-ja">香港着金ネット</span><span class="en net-label-en">Net to HK</span></span><span class="val" id="s3Net">—</span></div>
             </div>
           </div>
           <div class="chart-container small"><canvas id="scenarioChart"></canvas></div>
@@ -2075,12 +2075,24 @@ function getInputs() {
 }
 
 const DEFAULT_FX = { HKD: 2.08, USD: 0.27, JPY: 40.0, EUR: 0.25 };
+const NET_LABELS = {
+  HKD: { ja: "香港着金ネット", en: "Net to HK" },
+  USD: { ja: "米国着金ネット", en: "Net to US" },
+  JPY: { ja: "日本着金ネット", en: "Net to JP" },
+  EUR: { ja: "欧州着金ネット", en: "Net to EU" }
+};
+function applyNetLabels(cur) {
+  const lbl = NET_LABELS[cur] || NET_LABELS.HKD;
+  document.querySelectorAll(".net-label-ja").forEach(el => { el.textContent = lbl.ja; });
+  document.querySelectorAll(".net-label-en").forEach(el => { el.textContent = lbl.en; });
+}
 
 document.getElementById("currency").addEventListener("change", (e) => {
   const cur = e.target.value;
   document.getElementById("fxRate").value = DEFAULT_FX[cur] ?? 1;
   document.getElementById("fxRateLabel").textContent = cur;
   document.querySelectorAll(".cur-label").forEach(el => { el.textContent = cur; });
+  applyNetLabels(cur);
   render();
 });
 
@@ -2101,6 +2113,7 @@ function render() {
   document.getElementById("kpiNetAed").textContent = fmt(r.netSaleProceeds) + " AED";
   document.querySelectorAll(".cur-label").forEach(el => { el.textContent = cur; });
   document.getElementById("fxRateLabel").textContent = cur;
+  applyNetLabels(cur);
   document.getElementById("kpiIrr").textContent = fmtPct(r.irr);
   document.getElementById("kpiMultiple").textContent = fmtMult(r.multiple);
 
