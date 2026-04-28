@@ -387,16 +387,76 @@
     letter-spacing: 0.03em;
   }
   .cur-btn:last-child { border-right: none; }
-  .cur-btn:hover { background: #f1f5f9; color: var(--text); }
-  .cur-btn.active {
-    background: var(--primary); color: #fff;
-    box-shadow: inset 0 -3px 0 var(--accent);
-  }
+  .cur-btn:hover { filter: brightness(0.96); color: var(--text); }
   .currency-bar .fx-meta { margin-left: auto; }
   .currency-bar .fx-meta small {
     font-size: 11px; color: var(--text-muted); font-weight: 500;
   }
   .currency-bar .fx-meta small a { color: var(--text-muted); text-decoration: underline; }
+
+  .appr-btns {
+    display: inline-flex; border: 1px solid var(--border);
+    border-radius: 6px; overflow: hidden; background: #fff;
+    margin-bottom: 6px;
+  }
+  .appr-btn {
+    background: #fff; border: none; padding: 5px 14px;
+    font-size: 12px; font-weight: 600; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s;
+    border-right: 1px solid var(--border); font-family: inherit;
+    flex: 1;
+  }
+  .appr-btn:last-child { border-right: none; }
+  .appr-btn:hover { background: #f1f5f9; color: var(--text); }
+  .appr-btn.active { background: var(--primary); color: #fff; }
+
+  .size-equiv {
+    display: block; margin-top: 4px; font-size: 11px;
+    color: var(--text-muted); font-weight: 500;
+  }
+
+  .calc-card { margin-top: 12px; }
+  .calc-card #calcDisplay {
+    width: 100%; padding: 10px 12px; font-size: 18px;
+    font-weight: 700; text-align: right; font-family: 'Courier New', monospace;
+    background: var(--primary); color: #fff; border: none;
+    border-radius: 6px; margin-bottom: 8px;
+  }
+  .calc-keys {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  }
+  .calc-btn {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 0; font-size: 14px;
+    font-weight: 600; cursor: pointer; transition: all 0.1s;
+    font-family: inherit; color: var(--text);
+  }
+  .calc-btn:hover { background: #f1f5f9; }
+  .calc-btn:active { transform: scale(0.96); }
+  .calc-btn.op { background: #f8fafc; color: var(--primary); font-weight: 700; }
+  .calc-btn.op:hover { background: #e2e8f0; }
+  .calc-btn.eq { background: var(--accent); color: var(--primary); font-weight: 700; }
+  .calc-btn.eq:hover { filter: brightness(0.95); }
+
+  .cur-btn[data-cur="HKD"] {
+    background: linear-gradient(135deg, rgba(222,41,16,0.16) 0%, rgba(222,41,16,0) 55%), #fff;
+  }
+  .cur-btn[data-cur="USD"] {
+    background:
+      linear-gradient(135deg, rgba(60,59,110,0.15) 0%, rgba(60,59,110,0) 50%),
+      linear-gradient(315deg, rgba(178,34,52,0.15) 0%, rgba(178,34,52,0) 50%),
+      #fff;
+  }
+  .cur-btn[data-cur="JPY"] {
+    background: radial-gradient(circle at 50% 50%, rgba(188,0,45,0.20) 0%, rgba(188,0,45,0.06) 22%, rgba(255,255,255,0) 35%), #fff;
+  }
+  .cur-btn[data-cur="EUR"] {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255,204,0,0.18) 0%, rgba(255,204,0,0) 28%),
+      linear-gradient(135deg, rgba(0,51,153,0.15) 0%, rgba(0,51,153,0) 60%),
+      #fff;
+  }
+  .cur-btn.active { background: var(--primary); color: #fff; box-shadow: inset 0 -3px 0 var(--accent); }
 
   .kpi-grid {
     display: grid;
@@ -1211,6 +1271,7 @@
             <div class="field">
               <label><span class="ja">面積（sqft）</span><span class="en">Size (sqft)</span></label>
               <input type="number" id="sqft" value="2524" step="10">
+              <small id="sqftEquiv" class="size-equiv"></small>
             </div>
             <div class="field">
               <label>Svc/sqft</label>
@@ -1286,12 +1347,47 @@
         <div class="sim-card">
           <h3><span class="count">4</span><span class="ja">売却前提</span><span class="en">Sale</span></h3>
           <div class="field">
-            <label><span class="ja">累計値上がり率 (%) <small>※保有期間中の総値上がり</small></span><span class="en">Cumulative appreciation (%) <small>over hold period</small></span></label>
+            <label>
+              <span class="ja"><span id="apprLabelJa">累計値上がり率</span> (%) <small id="apprNoteJa">※保有期間中の総値上がり</small></span>
+              <span class="en"><span id="apprLabelEn">Cumulative appreciation</span> (%) <small id="apprNoteEn">over hold period</small></span>
+            </label>
+            <div class="appr-btns" role="group">
+              <button type="button" class="appr-btn active" data-mode="cumulative"><span class="ja">累計</span><span class="en">Total</span></button>
+              <button type="button" class="appr-btn" data-mode="annual"><span class="ja">年間</span><span class="en">Annual</span></button>
+            </div>
+            <input type="hidden" id="appreciationMode" value="cumulative">
             <input type="number" id="appreciation" value="35" step="1">
           </div>
           <div class="field">
             <label><span class="ja">保有期間（年）</span><span class="en">Holding period (years)</span></label>
             <input type="number" id="holdYears" value="5" min="1" max="15" step="1">
+          </div>
+        </div>
+
+        <!-- Mini calculator -->
+        <div class="sim-card calc-card">
+          <h3><span class="count">+</span><span class="ja">電卓</span><span class="en">Calculator</span></h3>
+          <input type="text" id="calcDisplay" value="0" readonly>
+          <div class="calc-keys">
+            <button type="button" class="calc-btn op" data-key="C">C</button>
+            <button type="button" class="calc-btn op" data-key="back">⌫</button>
+            <button type="button" class="calc-btn op" data-key="%">%</button>
+            <button type="button" class="calc-btn op" data-key="/">÷</button>
+            <button type="button" class="calc-btn" data-key="7">7</button>
+            <button type="button" class="calc-btn" data-key="8">8</button>
+            <button type="button" class="calc-btn" data-key="9">9</button>
+            <button type="button" class="calc-btn op" data-key="*">×</button>
+            <button type="button" class="calc-btn" data-key="4">4</button>
+            <button type="button" class="calc-btn" data-key="5">5</button>
+            <button type="button" class="calc-btn" data-key="6">6</button>
+            <button type="button" class="calc-btn op" data-key="-">−</button>
+            <button type="button" class="calc-btn" data-key="1">1</button>
+            <button type="button" class="calc-btn" data-key="2">2</button>
+            <button type="button" class="calc-btn" data-key="3">3</button>
+            <button type="button" class="calc-btn op" data-key="+">+</button>
+            <button type="button" class="calc-btn" data-key="0" style="grid-column: span 2">0</button>
+            <button type="button" class="calc-btn" data-key=".">.</button>
+            <button type="button" class="calc-btn eq" data-key="=">=</button>
           </div>
         </div>
       </div>
@@ -2054,7 +2150,12 @@ function calculate(inp) {
     return { cf, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net };
   }
 
-  const main = scenOperating(inp.holdYears, inp.appreciation);
+  // Convert annual appreciation to effective cumulative if user picked "annual" mode
+  const totalYearsHeld = constructionYears + inp.holdYears;
+  const effectiveCumulativePct = inp.appreciationMode === "annual"
+    ? (Math.pow(1 + inp.appreciation/100, totalYearsHeld) - 1) * 100
+    : inp.appreciation;
+  const main = scenOperating(inp.holdYears, effectiveCumulativePct);
   const mainIrr = irr(main.cf);
   const multiple = main.cf.slice(1).reduce((a,b) => a+b, 0) / initialCashAED;
   // Fixed cumulative appreciation per scenario (matches strategy paper midpoints)
@@ -2094,12 +2195,39 @@ function getInputs() {
     pmFee: +document.getElementById("pmFee").value || 0,
     furniture: +document.getElementById("furniture").value || 0,
     appreciation: +document.getElementById("appreciation").value || 0,
+    appreciationMode: document.getElementById("appreciationMode").value || "cumulative",
     holdYears: +document.getElementById("holdYears").value || 1,
     completionYear: +document.getElementById("completionYear").value || new Date().getFullYear(),
     fxRate: +document.getElementById("fxRate").value || 2.08,
     currency: document.getElementById("currency").value || "HKD"
   };
 }
+
+function setApprMode(mode) {
+  document.getElementById("appreciationMode").value = mode;
+  document.querySelectorAll(".appr-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.mode === mode);
+  });
+  // Adjust default value + label so users see something sensible after switching modes
+  const apprInput = document.getElementById("appreciation");
+  if (mode === "annual") {
+    document.getElementById("apprLabelJa").textContent = "年間値上がり率";
+    document.getElementById("apprLabelEn").textContent = "Annual appreciation";
+    document.getElementById("apprNoteJa").textContent = "※年率（複利で適用）";
+    document.getElementById("apprNoteEn").textContent = "compounded yearly";
+    if (+apprInput.value > 20) apprInput.value = 7;
+  } else {
+    document.getElementById("apprLabelJa").textContent = "累計値上がり率";
+    document.getElementById("apprLabelEn").textContent = "Cumulative appreciation";
+    document.getElementById("apprNoteJa").textContent = "※保有期間中の総値上がり";
+    document.getElementById("apprNoteEn").textContent = "over hold period";
+    if (+apprInput.value < 15) apprInput.value = 35;
+  }
+  render();
+}
+document.querySelectorAll(".appr-btn").forEach(btn => {
+  btn.addEventListener("click", () => setApprMode(btn.dataset.mode));
+});
 
 const DEFAULT_FX = { HKD: 2.13, USD: 0.27, JPY: 43.4, EUR: 0.23 };
 const AED_USD_PEG = 3.6725; // UAE Central Bank peg since 1997
@@ -2158,6 +2286,22 @@ function applyNetLabels(cur) {
   document.querySelectorAll(".net-label-en").forEach(el => { el.textContent = lbl.en; });
 }
 
+function updateSqftEquiv() {
+  const sqft = +document.getElementById("sqft").value || 0;
+  const cur = document.getElementById("currency").value || "HKD";
+  const el = document.getElementById("sqftEquiv");
+  if (!el) return;
+  if (cur === "JPY") {
+    el.textContent = `≈ ${(sqft * 0.0281058).toFixed(1)} 坪 (tsubo)`;
+  } else if (cur === "EUR") {
+    el.textContent = `≈ ${(sqft * 0.092903).toFixed(1)} m²`;
+  } else if (cur === "HKD") {
+    el.textContent = `≈ ${(sqft * 0.092903).toFixed(1)} m² (${sqft.toLocaleString()} 呎)`;
+  } else {
+    el.textContent = `≈ ${(sqft * 0.092903).toFixed(1)} m²`;
+  }
+}
+
 function setCurrency(cur) {
   document.getElementById("currency").value = cur;
   document.querySelectorAll(".cur-btn").forEach(b => {
@@ -2167,8 +2311,10 @@ function setCurrency(cur) {
   document.getElementById("fxRateLabel").textContent = cur;
   document.querySelectorAll(".cur-label").forEach(el => { el.textContent = cur; });
   applyNetLabels(cur);
+  updateSqftEquiv();
   render();
 }
+document.getElementById("sqft").addEventListener("input", updateSqftEquiv);
 document.querySelectorAll(".cur-btn").forEach(btn => {
   btn.addEventListener("click", () => setCurrency(btn.dataset.cur));
 });
@@ -2191,6 +2337,7 @@ function render() {
   document.querySelectorAll(".cur-label").forEach(el => { el.textContent = cur; });
   document.getElementById("fxRateLabel").textContent = cur;
   applyNetLabels(cur);
+  updateSqftEquiv();
   document.getElementById("kpiIrr").textContent = fmtPct(r.irr);
   document.getElementById("kpiMultiple").textContent = fmtMult(r.multiple);
 
@@ -2369,6 +2516,46 @@ function updateActiveNav() {
   });
 }
 window.addEventListener("scroll", updateActiveNav);
+
+// =========== MINI CALCULATOR ===========
+(function initCalc() {
+  const display = document.getElementById("calcDisplay");
+  if (!display) return;
+  let expr = "";
+  let justEvaluated = false;
+  const safeEval = (s) => {
+    if (!/^[\d\s+\-*/().%]*$/.test(s)) return null;
+    const withPct = s.replace(/(\d+(?:\.\d+)?)\s*%/g, "($1/100)");
+    try {
+      const r = Function('"use strict"; return (' + (withPct || "0") + ')')();
+      return Number.isFinite(r) ? r : null;
+    } catch (e) { return null; }
+  };
+  const fmtCalc = (n) => {
+    if (n === null) return "Error";
+    return Math.abs(n) >= 1 ? n.toLocaleString(undefined, { maximumFractionDigits: 4 }) : String(n);
+  };
+  const refresh = () => { display.value = expr || "0"; };
+  document.querySelectorAll(".calc-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const k = btn.dataset.key;
+      if (k === "C") { expr = ""; justEvaluated = false; refresh(); return; }
+      if (k === "back") { expr = expr.slice(0, -1); justEvaluated = false; refresh(); return; }
+      if (k === "=") {
+        const r = safeEval(expr);
+        expr = r === null ? "" : String(r);
+        justEvaluated = true;
+        display.value = fmtCalc(r);
+        return;
+      }
+      if (justEvaluated && /[\d.]/.test(k)) { expr = ""; justEvaluated = false; }
+      else justEvaluated = false;
+      expr += k;
+      refresh();
+    });
+  });
+  refresh();
+})();
 
 render();
 </script>
