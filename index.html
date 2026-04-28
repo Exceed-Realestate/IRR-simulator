@@ -392,6 +392,11 @@
     background: var(--primary); color: #fff;
     box-shadow: inset 0 -3px 0 var(--accent);
   }
+  .currency-bar .fx-meta { margin-left: auto; }
+  .currency-bar .fx-meta small {
+    font-size: 11px; color: var(--text-muted); font-weight: 500;
+  }
+  .currency-bar .fx-meta small a { color: var(--text-muted); text-decoration: underline; }
 
   .kpi-grid {
     display: grid;
@@ -1307,7 +1312,10 @@
           </div>
           <div class="cb-item">
             <label>AED → <span id="fxRateLabel">HKD</span></label>
-            <input type="number" id="fxRate" value="2.08" step="0.01">
+            <input type="number" id="fxRate" value="2.13" step="0.01">
+          </div>
+          <div class="cb-item fx-meta">
+            <small><span class="ja">最終更新</span><span class="en">Updated</span>: <span id="fxAsOf">—</span></small>
           </div>
         </div>
         <div class="kpi-grid">
@@ -2093,7 +2101,51 @@ function getInputs() {
   };
 }
 
-const DEFAULT_FX = { HKD: 2.08, USD: 0.27, JPY: 40.0, EUR: 0.25 };
+const DEFAULT_FX = { HKD: 2.13, USD: 0.27, JPY: 43.4, EUR: 0.23 };
+const AED_USD_PEG = 3.6725; // UAE Central Bank peg since 1997
+const FX_CACHE_KEY = "exceedSimFxRates";
+const FX_CACHE_HOURS = 12;
+
+async function fetchLiveRates() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || "null");
+    if (cached && (Date.now() - cached.fetchedAt) < FX_CACHE_HOURS * 3600 * 1000) return cached;
+  } catch (_) {}
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/USD");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (data.result !== "success") throw new Error("api error");
+    const out = {
+      HKD: +(data.rates.HKD / AED_USD_PEG).toFixed(4),
+      USD: +(1 / AED_USD_PEG).toFixed(4),
+      JPY: +(data.rates.JPY / AED_USD_PEG).toFixed(2),
+      EUR: +(data.rates.EUR / AED_USD_PEG).toFixed(4),
+      asOfDate: data.time_last_update_utc.slice(5, 16),
+      fetchedAt: Date.now()
+    };
+    localStorage.setItem(FX_CACHE_KEY, JSON.stringify(out));
+    return out;
+  } catch (e) {
+    console.warn("FX fetch failed:", e.message);
+    return null;
+  }
+}
+
+(async () => {
+  const live = await fetchLiveRates();
+  if (!live) {
+    const stamp = document.getElementById("fxAsOf");
+    if (stamp) stamp.textContent = "—";
+    return;
+  }
+  Object.assign(DEFAULT_FX, { HKD: live.HKD, USD: live.USD, JPY: live.JPY, EUR: live.EUR });
+  const cur = document.getElementById("currency").value || "HKD";
+  document.getElementById("fxRate").value = DEFAULT_FX[cur];
+  const stamp = document.getElementById("fxAsOf");
+  if (stamp) stamp.textContent = live.asOfDate;
+  if (typeof render === "function") render();
+})();
 const NET_LABELS = {
   HKD: { ja: "香港着金ネット", en: "Net to HK" },
   USD: { ja: "米国着金ネット", en: "Net to US" },
