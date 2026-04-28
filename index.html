@@ -439,6 +439,15 @@
   .calc-btn.eq { background: var(--accent); color: var(--primary); font-weight: 700; }
   .calc-btn.eq:hover { filter: brightness(0.95); }
 
+  .cp-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  }
+  .cp-grid .field { margin: 0; }
+  .cp-grid .cp-full { grid-column: 1 / -1; }
+  .cp-grid input, .cp-grid select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; font-family: inherit; }
+  .cp-grid input[type="file"] { padding: 6px; background: #f8fafc; }
+  @media (max-width: 600px) { .cp-grid { grid-template-columns: 1fr; } }
+
   .cur-btn[data-cur="HKD"] {
     background: linear-gradient(135deg, rgba(222,41,16,0.42) 0%, rgba(222,41,16,0.08) 60%, rgba(255,255,255,0.5) 100%), #fff;
   }
@@ -1259,7 +1268,7 @@
           <div class="field">
             <label><span class="ja">プリセット物件</span><span class="en">Preset</span></label>
             <select id="preset">
-              <option value="custom">— Custom —</option>
+              <option value="custom">— <span class="ja">フリー入力</span><span class="en">Free Input</span> —</option>
               <option value="ritz" selected>Ritz-Carlton Creekside 2BR (13.0M)</option>
               <option value="oneZaabeel">One Za'abeel 2BR (13.5M)</option>
               <option value="serenia">Serenia Living 2BR (7.0M)</option>
@@ -1269,7 +1278,13 @@
               <option value="orla">ORLA Dorchester 3BR (31.0M)</option>
               <option value="palmJebel">Palm Jebel Ali 6BR Villa (18.5M)</option>
               <option value="emerald">Emerald Hills Mansion (125.0M)</option>
+              <optgroup id="customPresetGroup" label="Custom Properties"></optgroup>
+              <option value="addCustom">+ Add Custom Property…</option>
             </select>
+            <div id="customPresetActions" style="display:none; margin-top:6px; font-size:11px;">
+              <a href="#" id="downloadCustomBrochure" style="color:var(--accent-dark); text-decoration:underline; margin-right:10px; display:none;">📄 Download brochure</a>
+              <a href="#" id="deleteCustomProperty" style="color:var(--negative); text-decoration:underline;">🗑️ Delete</a>
+            </div>
           </div>
           <div class="field">
             <label><span class="ja">物件価格（AED）</span><span class="en">Price (AED)</span></label>
@@ -1299,7 +1314,8 @@
               <label><span class="ja">購入方式</span><span class="en">Mode</span></label>
               <select id="purchaseMode">
                 <option value="offplan" selected>Off-plan</option>
-                <option value="ready">Ready</option>
+                <option value="ready">Ready (Primary)</option>
+                <option value="secondary">Secondary</option>
               </select>
             </div>
           </div>
@@ -1503,11 +1519,11 @@
             </div>
           </div>
           <div class="chart-toggle-row" style="display:flex;justify-content:flex-end;margin-bottom:8px">
-            <button type="button" id="chartToggle" class="scenario-toggle" onclick="toggleChart()">
-              <span class="ja">📊 チャートを表示</span><span class="en">📊 Show chart</span>
+            <button type="button" id="chartToggle" class="scenario-toggle active" onclick="toggleChart()">
+              <span class="ja">📊 チャートを隠す</span><span class="en">📊 Hide chart</span>
             </button>
           </div>
-          <div id="chartWrap" class="chart-container small" style="display:none"><canvas id="scenarioChart"></canvas></div>
+          <div id="chartWrap" class="chart-container small"><canvas id="scenarioChart"></canvas></div>
         </div>
 
         <div class="sim-card">
@@ -1683,6 +1699,95 @@
       <a href="https://docs.google.com/spreadsheets/d/1w-Y9ZwIIizcoQmh_CVpzxmkLjgCokuEQDDqClIj0LfE/edit?usp=sharing" target="_blank" rel="noopener">
         <span class="ja">全物件リスト（Google Sheets）を開く</span><span class="en">Open Full Property Sheet (Google Sheets)</span> →
       </a>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CUSTOM PROPERTY MODAL ============ -->
+<div class="modal-overlay" id="customPropertyModal" onclick="if(event.target===this)closeCustomPropertyModal()">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div>
+        <h2><span class="ja">カスタム物件を追加</span><span class="en">Add Custom Property</span></h2>
+        <div class="subtitle"><span class="ja">物件情報を入力して保存。ブロシュアもアップロード可能</span><span class="en">Enter property details and save. PDF brochure optional.</span></div>
+      </div>
+      <button class="modal-close" onclick="closeCustomPropertyModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="cp-grid">
+        <div class="field cp-full">
+          <label><span class="ja">物件名 *</span><span class="en">Property Name *</span></label>
+          <input type="text" id="cpName" placeholder="e.g. Bluewaters Edition 3BR">
+        </div>
+        <div class="field">
+          <label><span class="ja">価格 (AED) *</span><span class="en">Price (AED) *</span></label>
+          <input type="number" id="cpPrice" placeholder="13000000" step="100000">
+        </div>
+        <div class="field">
+          <label><span class="ja">面積 (sqft) *</span><span class="en">Size (sqft) *</span></label>
+          <input type="number" id="cpSqft" placeholder="2500" step="10">
+        </div>
+        <div class="field">
+          <label><span class="ja">タイプ</span><span class="en">Type</span></label>
+          <select id="cpType">
+            <option value="standard">Standard</option>
+            <option value="branded" selected>Branded</option>
+            <option value="villa">Villa</option>
+          </select>
+        </div>
+        <div class="field">
+          <label><span class="ja">購入方式</span><span class="en">Purchase Mode</span></label>
+          <select id="cpMode">
+            <option value="offplan" selected>Off-plan</option>
+            <option value="ready">Ready (Primary)</option>
+            <option value="secondary">Secondary</option>
+          </select>
+        </div>
+        <div class="field">
+          <label><span class="ja">完成予定年</span><span class="en">Completion Year</span></label>
+          <select id="cpCompletionYear">
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028" selected>2028</option>
+            <option value="2029">2029</option>
+            <option value="2030">2030</option>
+            <option value="2031">2031</option>
+            <option value="2032">2032</option>
+            <option value="2033">2033</option>
+            <option value="2034">2034</option>
+            <option value="2035">2035</option>
+          </select>
+        </div>
+        <div class="field">
+          <label><span class="ja">想定賃料利回り (%)</span><span class="en">Gross Yield (%)</span></label>
+          <input type="number" id="cpYield" value="6.5" step="0.1">
+        </div>
+        <div class="field">
+          <label><span class="ja">累計値上がり率 (%)</span><span class="en">Cumulative Appreciation (%)</span></label>
+          <input type="number" id="cpAppreciation" value="35" step="1">
+        </div>
+        <div class="field">
+          <label><span class="ja">サービスチャージ / sqft (AED)</span><span class="en">Service Charge / sqft (AED)</span></label>
+          <input type="number" id="cpServiceChargePsf" value="35" step="0.5">
+        </div>
+        <div class="field">
+          <label><span class="ja">家具設備 (AED)</span><span class="en">Furniture (AED)</span></label>
+          <input type="number" id="cpFurniture" value="0" step="10000">
+        </div>
+        <div class="field cp-full">
+          <label><span class="ja">ブロシュア PDF (任意, 4MB 以下推奨)</span><span class="en">Brochure PDF (optional, ≤4MB recommended)</span></label>
+          <input type="file" id="cpBrochure" accept="application/pdf">
+          <small id="cpBrochureStatus" style="display:block;margin-top:4px;color:var(--text-muted);font-size:11px"></small>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;padding:16px 28px">
+      <button type="button" class="b-btn" onclick="closeCustomPropertyModal()" style="background:#e5e7eb;color:var(--text)">
+        <span class="ja">キャンセル</span><span class="en">Cancel</span>
+      </button>
+      <button type="button" class="b-btn primary" onclick="saveCustomProperty()" style="background:var(--accent);color:var(--primary);font-weight:700">
+        💾 <span class="ja">保存して試算</span><span class="en">Save &amp; Simulate</span>
+      </button>
     </div>
   </div>
 </div>
@@ -1994,7 +2099,7 @@ const presets = {
 
 function loadPreset(key) {
   document.getElementById("preset").value = key;
-  const pr = presets[key];
+  const pr = (typeof customProps !== "undefined" && customProps[key]) || presets[key];
   if (!pr) return;
   document.getElementById("price").value = pr.price;
   document.getElementById("sqft").value = pr.sqft;
@@ -2006,14 +2111,142 @@ function loadPreset(key) {
   if (pr.mode) document.getElementById("purchaseMode").value = pr.mode;
   if (pr.completionYear) document.getElementById("completionYear").value = pr.completionYear;
   syncScenarioToggles();
+  updateCustomPresetActions(key);
   render();
   closeBrochureModal();
   document.getElementById("simulator").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// =========== CUSTOM PROPERTIES ===========
+const CUSTOM_PROPS_KEY = "exceedSimCustomProps";
+let customProps = {};
+
+function loadCustomProps() {
+  try {
+    customProps = JSON.parse(localStorage.getItem(CUSTOM_PROPS_KEY) || "{}");
+  } catch (e) { customProps = {}; }
+}
+function saveCustomProps() {
+  try { localStorage.setItem(CUSTOM_PROPS_KEY, JSON.stringify(customProps)); }
+  catch (e) { alert("Storage failed (likely quota exceeded). Try a smaller PDF."); }
+}
+function rebuildCustomPresetGroup() {
+  const group = document.getElementById("customPresetGroup");
+  if (!group) return;
+  group.innerHTML = "";
+  Object.entries(customProps).forEach(([id, p]) => {
+    const opt = document.createElement("option");
+    opt.value = id;
+    const priceM = (p.price / 1000000).toFixed(1);
+    opt.textContent = `★ ${p.name} (${priceM}M)`;
+    group.appendChild(opt);
+  });
+}
+function updateCustomPresetActions(key) {
+  const wrap = document.getElementById("customPresetActions");
+  const dl = document.getElementById("downloadCustomBrochure");
+  const del = document.getElementById("deleteCustomProperty");
+  if (!wrap) return;
+  const p = customProps[key];
+  if (p) {
+    wrap.style.display = "";
+    if (p.brochure) {
+      dl.style.display = "";
+      dl.onclick = (e) => {
+        e.preventDefault();
+        const a = document.createElement("a");
+        a.href = p.brochure;
+        a.download = (p.name || "brochure").replace(/[^\w\d-]+/g, "_") + ".pdf";
+        a.click();
+      };
+    } else {
+      dl.style.display = "none";
+    }
+    del.onclick = (e) => {
+      e.preventDefault();
+      if (!confirm("Delete this custom property?")) return;
+      delete customProps[key];
+      saveCustomProps();
+      rebuildCustomPresetGroup();
+      document.getElementById("preset").value = "custom";
+      wrap.style.display = "none";
+    };
+  } else {
+    wrap.style.display = "none";
+  }
+}
+
+function openCustomPropertyModal() {
+  const m = document.getElementById("customPropertyModal");
+  if (m) m.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeCustomPropertyModal() {
+  const m = document.getElementById("customPropertyModal");
+  if (m) m.classList.remove("open");
+  document.body.style.overflow = "";
+  // If user cancels with no save, revert dropdown to first non-action option
+  const sel = document.getElementById("preset");
+  if (sel.value === "addCustom") sel.value = Object.keys(customProps)[0] || "ritz";
+}
+function saveCustomProperty() {
+  const name = document.getElementById("cpName").value.trim();
+  const price = +document.getElementById("cpPrice").value;
+  const sqft = +document.getElementById("cpSqft").value;
+  if (!name || !price || !sqft) {
+    alert("Please fill in name, price, and size.");
+    return;
+  }
+  const id = "cust_" + Date.now();
+  const prop = {
+    name,
+    price,
+    sqft,
+    type: document.getElementById("cpType").value,
+    mode: document.getElementById("cpMode").value,
+    completionYear: +document.getElementById("cpCompletionYear").value,
+    yield: +document.getElementById("cpYield").value || 6.5,
+    appreciation: +document.getElementById("cpAppreciation").value || 35,
+    serviceChargePsf: +document.getElementById("cpServiceChargePsf").value || 35,
+    furniture: +document.getElementById("cpFurniture").value || 0,
+    brochure: null
+  };
+  const file = document.getElementById("cpBrochure").files[0];
+  const finish = () => {
+    customProps[id] = prop;
+    saveCustomProps();
+    rebuildCustomPresetGroup();
+    closeCustomPropertyModal();
+    document.getElementById("preset").value = id;
+    loadPreset(id);
+  };
+  if (file) {
+    if (file.size > 4 * 1024 * 1024) {
+      if (!confirm(`Brochure is ${(file.size/1024/1024).toFixed(1)}MB. Storage may fail. Continue anyway?`)) return;
+    }
+    const r = new FileReader();
+    r.onload = (e) => { prop.brochure = e.target.result; finish(); };
+    r.onerror = () => { alert("Failed to read brochure file."); finish(); };
+    r.readAsDataURL(file);
+  } else {
+    finish();
+  }
+}
+
+document.getElementById("cpBrochure")?.addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  const status = document.getElementById("cpBrochureStatus");
+  if (!status) return;
+  if (!f) { status.textContent = ""; return; }
+  status.textContent = `📄 ${f.name} (${(f.size/1024/1024).toFixed(2)} MB)`;
+});
+
+loadCustomProps();
+rebuildCustomPresetGroup();
+
 // =========== SCENARIO TOGGLE STATE ===========
 const scenarioVisible = { s1: true, s2: true, s3: true, s4: false };
-let chartVisible = false;
+let chartVisible = true;
 
 function toggleScenario(n) {
   const key = "s" + n;
@@ -2544,17 +2777,17 @@ function drawCumulativeChart(cashflows) {
 
 document.getElementById("preset").addEventListener("change", (e) => {
   const key = e.target.value;
-  if (key === "custom") return;
-  const pr = presets[key];
+  if (key === "addCustom") {
+    openCustomPropertyModal();
+    return;
+  }
+  if (key === "custom") {
+    updateCustomPresetActions(key); // hides actions
+    return;
+  }
+  const pr = customProps[key] || presets[key];
   if (!pr) return;
-  document.getElementById("price").value = pr.price;
-  document.getElementById("sqft").value = pr.sqft;
-  document.getElementById("serviceChargePsf").value = pr.serviceChargePsf;
-  document.getElementById("propertyType").value = pr.type;
-  document.getElementById("grossYield").value = pr.yield;
-  document.getElementById("appreciation").value = pr.appreciation;
-  document.getElementById("furniture").value = pr.furniture;
-  render();
+  loadPreset(key);
 });
 
 document.querySelectorAll("input, select").forEach(el => {
