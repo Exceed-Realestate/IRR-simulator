@@ -22,6 +22,7 @@
     --s1: #3b82f6;
     --s2: #10b981;
     --s3: #a855f7;
+    --s4: #f59e0b;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; scroll-padding-top: 68px; }
@@ -439,21 +440,21 @@
   .calc-btn.eq:hover { filter: brightness(0.95); }
 
   .cur-btn[data-cur="HKD"] {
-    background: linear-gradient(135deg, rgba(222,41,16,0.16) 0%, rgba(222,41,16,0) 55%), #fff;
+    background: linear-gradient(135deg, rgba(222,41,16,0.42) 0%, rgba(222,41,16,0.08) 60%, rgba(255,255,255,0.5) 100%), #fff;
   }
   .cur-btn[data-cur="USD"] {
     background:
-      linear-gradient(135deg, rgba(60,59,110,0.15) 0%, rgba(60,59,110,0) 50%),
-      linear-gradient(315deg, rgba(178,34,52,0.15) 0%, rgba(178,34,52,0) 50%),
+      linear-gradient(135deg, rgba(60,59,110,0.42) 0%, rgba(60,59,110,0) 50%),
+      linear-gradient(315deg, rgba(178,34,52,0.42) 0%, rgba(178,34,52,0) 50%),
       #fff;
   }
   .cur-btn[data-cur="JPY"] {
-    background: radial-gradient(circle at 50% 50%, rgba(188,0,45,0.20) 0%, rgba(188,0,45,0.06) 22%, rgba(255,255,255,0) 35%), #fff;
+    background: radial-gradient(circle at 50% 50%, rgba(188,0,45,0.55) 0%, rgba(188,0,45,0.18) 24%, rgba(255,255,255,0) 38%), #fff;
   }
   .cur-btn[data-cur="EUR"] {
     background:
-      radial-gradient(circle at 50% 50%, rgba(255,204,0,0.18) 0%, rgba(255,204,0,0) 28%),
-      linear-gradient(135deg, rgba(0,51,153,0.15) 0%, rgba(0,51,153,0) 60%),
+      radial-gradient(circle at 50% 50%, rgba(255,204,0,0.55) 0%, rgba(255,204,0,0) 32%),
+      linear-gradient(135deg, rgba(0,51,153,0.40) 0%, rgba(0,51,153,0.05) 70%),
       #fff;
   }
   .cur-btn.active { background: var(--primary); color: #fff; box-shadow: inset 0 -3px 0 var(--accent); }
@@ -504,6 +505,7 @@
   .scenario-toggle.active.s1 { background: var(--s1); color: #fff; border-color: var(--s1); }
   .scenario-toggle.active.s2 { background: var(--s2); color: #fff; border-color: var(--s2); }
   .scenario-toggle.active.s3 { background: var(--s3); color: #fff; border-color: var(--s3); }
+  .scenario-toggle.active.s4 { background: var(--s4); color: #fff; border-color: var(--s4); }
   .scenario-toggle:disabled {
     opacity: 0.35; cursor: not-allowed;
     background: #f3f4f6; color: #9ca3af; border-color: var(--border);
@@ -521,10 +523,16 @@
   .scenario.s1 { border-top: 4px solid var(--s1); }
   .scenario.s2 { border-top: 4px solid var(--s2); }
   .scenario.s3 { border-top: 4px solid var(--s3); }
+  .scenario.s4 { border-top: 4px solid var(--s4); }
   .scenario-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
   .scenario.s1 .scenario-title { color: var(--s1); }
   .scenario.s2 .scenario-title { color: var(--s2); }
   .scenario.s3 .scenario-title { color: var(--s3); }
+  .scenario.s4 .scenario-title { color: var(--s4); }
+  .scenario.s4 .scenario-custom { display: flex; gap: 8px; margin-bottom: 8px; }
+  .scenario.s4 .scenario-custom .field { flex: 1; margin: 0; }
+  .scenario.s4 .scenario-custom label { font-size: 11px; }
+  .scenario.s4 .scenario-custom input { padding: 5px 8px; font-size: 12px; }
   .scenario-desc { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
   .scenario-metric { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed var(--border); }
   .scenario-metric:last-child { border-bottom: none; }
@@ -1450,6 +1458,9 @@
             <button class="scenario-toggle active s3" id="toggle-s3" onclick="toggleScenario(3)" type="button">
               <span class="ja">③ 中長期保有</span><span class="en">(3) Long-Term Hold</span>
             </button>
+            <button class="scenario-toggle s4" id="toggle-s4" onclick="toggleScenario(4)" type="button">
+              <span class="ja">④ カスタム</span><span class="en">(4) Custom</span>
+            </button>
           </div>
           <div class="scenario-grid">
             <div class="scenario s1">
@@ -1473,8 +1484,30 @@
               <div class="scenario-metric"><span><span class="ja">年率 IRR</span><span class="en">IRR p.a.</span></span><span class="val" id="s3Irr">—</span></div>
               <div class="scenario-metric"><span><span class="ja net-label-ja">香港着金ネット</span><span class="en net-label-en">Net to HK</span></span><span class="val" id="s3Net">—</span></div>
             </div>
+            <div class="scenario s4">
+              <div class="scenario-title"><span class="ja">シナリオ④ カスタム</span><span class="en">(4) Custom</span></div>
+              <div class="scenario-desc"><span class="ja">任意の保有期間・値上がり率を入力</span><span class="en">Custom hold period &amp; appreciation</span></div>
+              <div class="scenario-custom">
+                <div class="field">
+                  <label><span class="ja">年数</span><span class="en">Years</span></label>
+                  <input type="number" id="s4Years" value="5" min="1" max="20" step="1">
+                </div>
+                <div class="field">
+                  <label><span class="ja">累計%</span><span class="en">Cum %</span></label>
+                  <input type="number" id="s4Appr" value="35" step="1">
+                </div>
+              </div>
+              <div class="scenario-metric"><span><span class="ja">累計リターン</span><span class="en">Total Return</span></span><span class="val" id="s4Return">—</span></div>
+              <div class="scenario-metric"><span><span class="ja">年率 IRR</span><span class="en">IRR p.a.</span></span><span class="val" id="s4Irr">—</span></div>
+              <div class="scenario-metric"><span><span class="ja net-label-ja">香港着金ネット</span><span class="en net-label-en">Net to HK</span></span><span class="val" id="s4Net">—</span></div>
+            </div>
           </div>
-          <div class="chart-container small"><canvas id="scenarioChart"></canvas></div>
+          <div class="chart-toggle-row" style="display:flex;justify-content:flex-end;margin-bottom:8px">
+            <button type="button" id="chartToggle" class="scenario-toggle" onclick="toggleChart()">
+              <span class="ja">📊 チャートを表示</span><span class="en">📊 Show chart</span>
+            </button>
+          </div>
+          <div id="chartWrap" class="chart-container small" style="display:none"><canvas id="scenarioChart"></canvas></div>
         </div>
 
         <div class="sim-card">
@@ -1979,7 +2012,8 @@ function loadPreset(key) {
 }
 
 // =========== SCENARIO TOGGLE STATE ===========
-const scenarioVisible = { s1: true, s2: true, s3: true };
+const scenarioVisible = { s1: true, s2: true, s3: true, s4: false };
+let chartVisible = false;
 
 function toggleScenario(n) {
   const key = "s" + n;
@@ -1988,6 +2022,19 @@ function toggleScenario(n) {
   scenarioVisible[key] = !scenarioVisible[key];
   btn.classList.toggle("active", scenarioVisible[key]);
   render();
+}
+
+function toggleChart() {
+  chartVisible = !chartVisible;
+  const wrap = document.getElementById("chartWrap");
+  const btn = document.getElementById("chartToggle");
+  if (wrap) wrap.style.display = chartVisible ? "" : "none";
+  if (btn) {
+    btn.classList.toggle("active", chartVisible);
+    btn.querySelector(".ja").textContent = chartVisible ? "📊 チャートを隠す" : "📊 チャートを表示";
+    btn.querySelector(".en").textContent = chartVisible ? "📊 Hide chart" : "📊 Show chart";
+  }
+  if (chartVisible) render();
 }
 
 function syncScenarioToggles() {
@@ -2162,6 +2209,7 @@ function calculate(inp) {
   const s1 = scenTotal(2, 25);  // ① Off-plan resale: ~+25% cumulative (paper 20-30%)
   const s2 = scenTotal(4, 32);  // ② Post-handover short: ~+32% (paper 25-40%)
   const s3 = scenTotal(7, 40);  // ③ Long-term hold:   ~+40% (paper 30-50%)
+  const s4 = scenTotal(inp.s4Years || 5, inp.s4Appr || 35);  // ④ Custom (user-defined)
 
   return {
     cashDown, loanAmount, dld, trustee, titleDeed, oqood, noc, agentFee, mortgageReg, brokerFee,
@@ -2174,7 +2222,8 @@ function calculate(inp) {
     scenarios: {
       s1: { irr: irr(s1.cf), net: s1.netSaleProceeds, return: s1.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED },
       s2: { irr: irr(s2.cf), net: s2.netSaleProceeds, return: s2.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED },
-      s3: { irr: irr(s3.cf), net: s3.netSaleProceeds, return: s3.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED }
+      s3: { irr: irr(s3.cf), net: s3.netSaleProceeds, return: s3.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED },
+      s4: { irr: irr(s4.cf), net: s4.netSaleProceeds, return: s4.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED }
     }
   };
 }
@@ -2199,7 +2248,9 @@ function getInputs() {
     holdYears: +document.getElementById("holdYears").value || 1,
     completionYear: +document.getElementById("completionYear").value || new Date().getFullYear(),
     fxRate: +document.getElementById("fxRate").value || 2.08,
-    currency: document.getElementById("currency").value || "HKD"
+    currency: document.getElementById("currency").value || "HKD",
+    s4Years: +document.getElementById("s4Years").value || 5,
+    s4Appr: +document.getElementById("s4Appr").value || 35
   };
 }
 
@@ -2346,11 +2397,11 @@ function render() {
   syncScenarioToggles();
 
   // Show/hide each scenario card based on toggle state
-  ["s1","s2","s3"].forEach(key => {
+  ["s1","s2","s3","s4"].forEach(key => {
     const card = document.querySelector(".scenario." + key);
     if (card) card.style.display = scenarioVisible[key] ? "" : "none";
   });
-  const visibleCount = ["s1","s2","s3"].filter(k => scenarioVisible[k]).length;
+  const visibleCount = ["s1","s2","s3","s4"].filter(k => scenarioVisible[k]).length;
   const scenGrid = document.querySelector(".scenario-grid");
   if (scenGrid) scenGrid.style.gridTemplateColumns = `repeat(${Math.max(1, visibleCount)}, 1fr)`;
 
@@ -2368,6 +2419,11 @@ function render() {
     document.getElementById("s3Return").textContent = fmtPct(s.s3.return);
     document.getElementById("s3Irr").textContent = fmtPct(s.s3.irr);
     document.getElementById("s3Net").textContent = fmt(s.s3.net * fx) + " " + cur;
+  }
+  if (scenarioVisible.s4) {
+    document.getElementById("s4Return").textContent = fmtPct(s.s4.return);
+    document.getElementById("s4Irr").textContent = fmtPct(s.s4.irr);
+    document.getElementById("s4Net").textContent = fmt(s.s4.net * fx) + " " + cur;
   }
 
   const initRows = [
@@ -2416,17 +2472,20 @@ function render() {
 }
 
 function drawScenarioChart(s) {
+  if (!chartVisible) return; // gated by toggle
   const lang = document.body.getAttribute("data-lang") || "ja";
+  const inp = getInputs();
+  const customYrs = inp.s4Years || 5;
   const allLabels = lang === "ja"
-    ? ["① オフプラン・リセール (2年)", "② 引渡後・短期売却 (4年)", "③ 中長期保有 (7年)"]
-    : ["(1) Off-plan flip (2y)", "(2) Post-handover short (4y)", "(3) Long-term hold (7y)"];
+    ? ["① オフプラン・リセール (2年)", "② 引渡後・短期売却 (4年)", "③ 中長期保有 (7年)", `④ カスタム (${customYrs}年)`]
+    : ["(1) Off-plan flip (2y)", "(2) Post-handover short (4y)", "(3) Long-term hold (7y)", `(4) Custom (${customYrs}y)`];
   const retLabel = lang === "ja" ? "累計リターン (%)" : "Total Return (%)";
   const irrLabel = lang === "ja" ? "年率 IRR (%)" : "IRR p.a. (%)";
 
   // Filter datasets to visible scenarios only
-  const allColors  = ["rgba(59,130,246,0.7)", "rgba(16,185,129,0.7)", "rgba(168,85,247,0.7)"];
-  const allBorders = ["#3b82f6", "#10b981", "#a855f7"];
-  const keys = ["s1","s2","s3"];
+  const allColors  = ["rgba(59,130,246,0.7)", "rgba(16,185,129,0.7)", "rgba(168,85,247,0.7)", "rgba(245,158,11,0.7)"];
+  const allBorders = ["#3b82f6", "#10b981", "#a855f7", "#f59e0b"];
+  const keys = ["s1","s2","s3","s4"];
   const idx = keys.map((k,i) => scenarioVisible[k] ? i : -1).filter(i => i >= 0);
 
   const scLabels = idx.map(i => allLabels[i]);
