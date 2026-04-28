@@ -1384,8 +1384,11 @@
             <input type="number" id="appreciation" value="35" step="1">
           </div>
           <div class="field">
-            <label><span class="ja">保有期間（年）</span><span class="en">Holding period (years)</span></label>
-            <input type="number" id="holdYears" value="5" min="1" max="15" step="1">
+            <label>
+              <span class="ja">保有期間（年）<small>※購入から売却までの総年数（建設期間含む）</small></span>
+              <span class="en">Holding period (years) <small>total from purchase, incl. construction</small></span>
+            </label>
+            <input type="number" id="holdYears" value="5" min="1" max="20" step="1">
           </div>
         </div>
 
@@ -1546,7 +1549,7 @@
         </div>
 
         <div class="sim-card">
-          <h3><span class="count">B</span><span class="ja">物件完成後 年次キャッシュフロー</span><span class="en">Post-Handover Annual Cash Flow</span></h3>
+          <h3><span class="count">B</span><span class="ja">年次キャッシュフロー</span><span class="en">Annual Cash Flow</span></h3>
           <table class="data-table">
             <thead><tr>
               <th><span class="ja">年</span><span class="en">Yr</span></th>
@@ -2438,15 +2441,16 @@ function calculate(inp) {
     const net = salePrice - saleAgentFee - saleNOC - remainingLoan;
     if (cf.length > 1) cf[cf.length-1] += net;
     else cf.push(net);
-    return { cf, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net };
+    return { cf, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net, operatingYears, cYears };
   }
 
-  // Convert annual appreciation to effective cumulative if user picked "annual" mode
-  const totalYearsHeld = constructionYears + inp.holdYears;
+  // holdYears = TOTAL years from purchase (construction + operating).
+  // Operating years = max(0, holdYears - constructionYears).
+  const totalYearsHeld = inp.holdYears;
   const effectiveCumulativePct = inp.appreciationMode === "annual"
     ? (Math.pow(1 + inp.appreciation/100, totalYearsHeld) - 1) * 100
     : inp.appreciation;
-  const main = scenOperating(inp.holdYears, effectiveCumulativePct);
+  const main = scenTotal(inp.holdYears, effectiveCumulativePct);
   const mainIrr = irr(main.cf);
   const multiple = main.cf.slice(1).reduce((a,b) => a+b, 0) / initialCashAED;
   // Fixed cumulative appreciation per scenario (matches strategy paper midpoints)
@@ -2705,17 +2709,28 @@ function render() {
   ).join("") + `<tr class="total"><td>${L("initialTotal")}</td><td class="num">${fmt(r.initialCashAED)}</td><td class="num">${fmt(r.initialCashAED * fx)}</td><td></td></tr>`;
 
   const rows = [];
-  const completionYear = inp.completionYear || (new Date().getFullYear());
+  const purchaseYear = new Date().getFullYear();
+  const completionYear = inp.completionYear || purchaseYear;
+  const cYears = Math.max(0, completionYear - purchaseYear);
   for (let y = 0; y < inp.holdYears; y++) {
-    const calendarYear = completionYear + y;
-    rows.push(`<tr><td>${calendarYear}</td>
-      <td class="num">${fmt(r.grossRent)}</td>
-      <td class="num" style="color:var(--negative)">${fmt(-r.vacancyLoss)}</td>
-      <td class="num" style="color:var(--negative)">${fmt(-r.pmFee)}</td>
-      <td class="num" style="color:var(--negative)">${fmt(-r.serviceCharge)}</td>
-      <td class="num" style="color:var(--negative)">${fmt(-r.annualLoanPayment)}</td>
-      <td class="num" style="font-weight:600;color:${r.annualNetCF>=0?'var(--positive)':'var(--negative)'}">${fmt(r.annualNetCF)}</td>
-    </tr>`);
+    const calendarYear = purchaseYear + y;
+    const underConstruction = y < cYears;
+    if (underConstruction) {
+      rows.push(`<tr style="background:#f9fafb;color:#94a3b8">
+        <td>${calendarYear} <small style="font-style:italic">建設中</small></td>
+        <td class="num">—</td><td class="num">—</td><td class="num">—</td>
+        <td class="num">—</td><td class="num">—</td><td class="num">—</td>
+      </tr>`);
+    } else {
+      rows.push(`<tr><td>${calendarYear}</td>
+        <td class="num">${fmt(r.grossRent)}</td>
+        <td class="num" style="color:var(--negative)">${fmt(-r.vacancyLoss)}</td>
+        <td class="num" style="color:var(--negative)">${fmt(-r.pmFee)}</td>
+        <td class="num" style="color:var(--negative)">${fmt(-r.serviceCharge)}</td>
+        <td class="num" style="color:var(--negative)">${fmt(-r.annualLoanPayment)}</td>
+        <td class="num" style="font-weight:600;color:${r.annualNetCF>=0?'var(--positive)':'var(--negative)'}">${fmt(r.annualNetCF)}</td>
+      </tr>`);
+    }
   }
   document.getElementById("cashflowTable").innerHTML = rows.join("");
 
