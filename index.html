@@ -2524,15 +2524,20 @@ document.querySelectorAll(".appr-btn").forEach(btn => {
   btn.addEventListener("click", () => setApprMode(btn.dataset.mode));
 });
 
-const DEFAULT_FX = { HKD: 2.13, USD: 0.27, JPY: 43.4, EUR: 0.23, CNY: 1.97, KRW: 376, INR: 22.7, RUB: 22.0 };
+const DEFAULT_FX = { HKD: 2.13, USD: 0.27, JPY: 43.4, EUR: 0.23, CNY: 1.86, KRW: 401, INR: 25.7, RUB: 20.4 };
 const AED_USD_PEG = 3.6725; // UAE Central Bank peg since 1997
-const FX_CACHE_KEY = "exceedSimFxRates";
+const FX_CACHE_KEY = "exceedSimFxRates_v2";
 const FX_CACHE_HOURS = 12;
+const FX_REQUIRED = ["HKD","USD","JPY","EUR","CNY","KRW","INR","RUB"];
 
 async function fetchLiveRates() {
+  // Drop legacy cache that lacks newer currencies
+  try { localStorage.removeItem("exceedSimFxRates"); } catch(_) {}
   try {
     const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || "null");
-    if (cached && (Date.now() - cached.fetchedAt) < FX_CACHE_HOURS * 3600 * 1000) return cached;
+    const fresh = cached && (Date.now() - cached.fetchedAt) < FX_CACHE_HOURS * 3600 * 1000;
+    const complete = cached && FX_REQUIRED.every(k => typeof cached[k] === "number");
+    if (fresh && complete) return cached;
   } catch (_) {}
   try {
     const res = await fetch("https://open.er-api.com/v6/latest/USD");
