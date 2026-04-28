@@ -355,6 +355,26 @@
   .checkbox-field input[type="checkbox"] { width: 16px; height: 16px; }
   .checkbox-field label { margin: 0; font-size: 13px; color: var(--text); }
 
+  .currency-bar {
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    background: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 18px; margin-bottom: 16px;
+  }
+  .currency-bar .cb-title {
+    font-size: 12px; font-weight: 700; color: var(--primary);
+    letter-spacing: 0.05em; text-transform: uppercase;
+    border-right: 2px solid var(--accent); padding-right: 14px;
+  }
+  .currency-bar .cb-item { display: flex; align-items: center; gap: 8px; }
+  .currency-bar label { font-size: 12px; color: var(--text-muted); margin: 0; font-weight: 600; }
+  .currency-bar select, .currency-bar input {
+    padding: 6px 10px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 13px; min-width: 110px;
+    background: #fff; color: var(--text); font-weight: 600;
+  }
+  .currency-bar input { min-width: 90px; max-width: 110px; }
+
   .kpi-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1250,8 +1270,15 @@
             <label><span class="ja">保有期間（年）</span><span class="en">Holding period (years)</span></label>
             <input type="number" id="holdYears" value="5" min="1" max="15" step="1">
           </div>
-          <div class="field">
-            <label><span class="ja">通貨</span><span class="en">Currency</span></label>
+        </div>
+      </div>
+
+      <!-- OUTPUTS -->
+      <div class="output-panel">
+        <div class="currency-bar">
+          <div class="cb-title"><span class="ja">通貨設定</span><span class="en">Currency</span></div>
+          <div class="cb-item">
+            <label><span class="ja">表示通貨</span><span class="en">Display</span></label>
             <select id="currency">
               <option value="HKD">HKD (香港ドル)</option>
               <option value="USD">USD (米ドル)</option>
@@ -1259,15 +1286,11 @@
               <option value="EUR">EUR (ユーロ)</option>
             </select>
           </div>
-          <div class="field">
-            <label><span class="ja">AED → <span id="fxRateLabel">HKD</span></span><span class="en">AED → <span id="fxRateLabelEn">HKD</span></span></label>
+          <div class="cb-item">
+            <label>AED → <span id="fxRateLabel">HKD</span></label>
             <input type="number" id="fxRate" value="2.08" step="0.01">
           </div>
         </div>
-      </div>
-
-      <!-- OUTPUTS -->
-      <div class="output-panel">
         <div class="kpi-grid">
           <div class="kpi">
             <div class="kpi-label"><span class="ja">初期手出し合計</span><span class="en">Initial Outlay</span></div>
@@ -2057,7 +2080,6 @@ document.getElementById("currency").addEventListener("change", (e) => {
   const cur = e.target.value;
   document.getElementById("fxRate").value = DEFAULT_FX[cur] ?? 1;
   document.getElementById("fxRateLabel").textContent = cur;
-  document.getElementById("fxRateLabelEn").textContent = cur;
   document.querySelectorAll(".cur-label").forEach(el => { el.textContent = cur; });
   render();
 });
@@ -2079,7 +2101,6 @@ function render() {
   document.getElementById("kpiNetAed").textContent = fmt(r.netSaleProceeds) + " AED";
   document.querySelectorAll(".cur-label").forEach(el => { el.textContent = cur; });
   document.getElementById("fxRateLabel").textContent = cur;
-  document.getElementById("fxRateLabelEn").textContent = cur;
   document.getElementById("kpiIrr").textContent = fmtPct(r.irr);
   document.getElementById("kpiMultiple").textContent = fmtMult(r.multiple);
 
