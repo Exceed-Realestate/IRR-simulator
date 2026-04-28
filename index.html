@@ -376,6 +376,7 @@
     background: #fff; color: var(--text); font-weight: 600;
   }
   .currency-bar input { min-width: 90px; max-width: 110px; }
+  .currency-bar #extraCurrency { min-width: 130px; max-width: 160px; }
   .currency-btns {
     display: inline-flex; border: 1px solid var(--border);
     border-radius: 8px; overflow: hidden; background: #fff;
@@ -1429,6 +1430,16 @@
               <button type="button" class="cur-btn" data-cur="EUR">EUR</button>
             </div>
             <input type="hidden" id="currency" value="HKD">
+          </div>
+          <div class="cb-item">
+            <label><span class="ja">他の通貨</span><span class="en">More</span></label>
+            <select id="extraCurrency">
+              <option value="">— —</option>
+              <option value="CNY">CNY (人民元)</option>
+              <option value="KRW">KRW (韓国ウォン)</option>
+              <option value="INR">INR (インドルピー)</option>
+              <option value="RUB">RUB (ロシアルーブル)</option>
+            </select>
           </div>
           <div class="cb-item">
             <label>AED → <span id="fxRateLabel">HKD</span></label>
@@ -2513,7 +2524,7 @@ document.querySelectorAll(".appr-btn").forEach(btn => {
   btn.addEventListener("click", () => setApprMode(btn.dataset.mode));
 });
 
-const DEFAULT_FX = { HKD: 2.13, USD: 0.27, JPY: 43.4, EUR: 0.23 };
+const DEFAULT_FX = { HKD: 2.13, USD: 0.27, JPY: 43.4, EUR: 0.23, CNY: 1.97, KRW: 376, INR: 22.7, RUB: 22.0 };
 const AED_USD_PEG = 3.6725; // UAE Central Bank peg since 1997
 const FX_CACHE_KEY = "exceedSimFxRates";
 const FX_CACHE_HOURS = 12;
@@ -2533,6 +2544,10 @@ async function fetchLiveRates() {
       USD: +(1 / AED_USD_PEG).toFixed(4),
       JPY: +(data.rates.JPY / AED_USD_PEG).toFixed(2),
       EUR: +(data.rates.EUR / AED_USD_PEG).toFixed(4),
+      CNY: +(data.rates.CNY / AED_USD_PEG).toFixed(4),
+      KRW: +(data.rates.KRW / AED_USD_PEG).toFixed(2),
+      INR: +(data.rates.INR / AED_USD_PEG).toFixed(4),
+      RUB: +(data.rates.RUB / AED_USD_PEG).toFixed(4),
       asOfDate: data.time_last_update_utc.slice(5, 16),
       fetchedAt: Date.now()
     };
@@ -2551,7 +2566,7 @@ async function fetchLiveRates() {
     if (stamp) stamp.textContent = "—";
     return;
   }
-  Object.assign(DEFAULT_FX, { HKD: live.HKD, USD: live.USD, JPY: live.JPY, EUR: live.EUR });
+  Object.assign(DEFAULT_FX, { HKD: live.HKD, USD: live.USD, JPY: live.JPY, EUR: live.EUR, CNY: live.CNY, KRW: live.KRW, INR: live.INR, RUB: live.RUB });
   const cur = document.getElementById("currency").value || "HKD";
   document.getElementById("fxRate").value = DEFAULT_FX[cur];
   const stamp = document.getElementById("fxAsOf");
@@ -2562,7 +2577,11 @@ const NET_LABELS = {
   HKD: { ja: "香港着金ネット", en: "Net to HK" },
   USD: { ja: "米国着金ネット", en: "Net to US" },
   JPY: { ja: "日本着金ネット", en: "Net to JP" },
-  EUR: { ja: "欧州着金ネット", en: "Net to EU" }
+  EUR: { ja: "欧州着金ネット", en: "Net to EU" },
+  CNY: { ja: "中国着金ネット", en: "Net to CN" },
+  KRW: { ja: "韓国着金ネット", en: "Net to KR" },
+  INR: { ja: "インド着金ネット", en: "Net to IN" },
+  RUB: { ja: "ロシア着金ネット", en: "Net to RU" }
 };
 function applyNetLabels(cur) {
   const lbl = NET_LABELS[cur] || NET_LABELS.HKD;
@@ -2575,22 +2594,26 @@ function updateSqftEquiv() {
   const cur = document.getElementById("currency").value || "HKD";
   const el = document.getElementById("sqftEquiv");
   if (!el) return;
+  const sqm = (sqft * 0.092903).toFixed(1);
   if (cur === "JPY") {
     el.textContent = `≈ ${(sqft * 0.0281058).toFixed(1)} 坪 (tsubo)`;
-  } else if (cur === "EUR") {
-    el.textContent = `≈ ${(sqft * 0.092903).toFixed(1)} m²`;
+  } else if (cur === "KRW") {
+    el.textContent = `≈ ${(sqft * 0.0281058).toFixed(1)} 평 (pyeong)`;
   } else if (cur === "HKD") {
-    el.textContent = `≈ ${(sqft * 0.092903).toFixed(1)} m² (${sqft.toLocaleString()} 呎)`;
+    el.textContent = `≈ ${sqm} m² (${sqft.toLocaleString()} 呎)`;
   } else {
-    el.textContent = `≈ ${(sqft * 0.092903).toFixed(1)} m²`;
+    el.textContent = `≈ ${sqm} m²`;
   }
 }
 
 function setCurrency(cur) {
   document.getElementById("currency").value = cur;
+  const isButtonCur = ["HKD","USD","JPY","EUR"].includes(cur);
   document.querySelectorAll(".cur-btn").forEach(b => {
-    b.classList.toggle("active", b.dataset.cur === cur);
+    b.classList.toggle("active", isButtonCur && b.dataset.cur === cur);
   });
+  const extra = document.getElementById("extraCurrency");
+  if (extra) extra.value = isButtonCur ? "" : cur;
   document.getElementById("fxRate").value = DEFAULT_FX[cur] ?? 1;
   document.getElementById("fxRateLabel").textContent = cur;
   document.querySelectorAll(".cur-label").forEach(el => { el.textContent = cur; });
@@ -2601,6 +2624,9 @@ function setCurrency(cur) {
 document.getElementById("sqft").addEventListener("input", updateSqftEquiv);
 document.querySelectorAll(".cur-btn").forEach(btn => {
   btn.addEventListener("click", () => setCurrency(btn.dataset.cur));
+});
+document.getElementById("extraCurrency")?.addEventListener("change", (e) => {
+  if (e.target.value) setCurrency(e.target.value);
 });
 
 let scenarioChart = null, cumulativeChart = null;
