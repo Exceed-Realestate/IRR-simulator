@@ -345,6 +345,7 @@
   .field input, .field select {
     padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px;
     font-size: 13px; font-family: inherit; background: #fff;
+    width: 100%; min-width: 0;
   }
   .field input:focus, .field select:focus {
     outline: none; border-color: var(--accent);
@@ -374,6 +375,23 @@
     background: #fff; color: var(--text); font-weight: 600;
   }
   .currency-bar input { min-width: 90px; max-width: 110px; }
+  .currency-btns {
+    display: inline-flex; border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; background: #fff;
+  }
+  .cur-btn {
+    background: #fff; border: none; padding: 8px 16px;
+    font-size: 13px; font-weight: 700; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s;
+    border-right: 1px solid var(--border); font-family: inherit;
+    letter-spacing: 0.03em;
+  }
+  .cur-btn:last-child { border-right: none; }
+  .cur-btn:hover { background: #f1f5f9; color: var(--text); }
+  .cur-btn.active {
+    background: var(--primary); color: #fff;
+    box-shadow: inset 0 -3px 0 var(--accent);
+  }
 
   .kpi-grid {
     display: grid;
@@ -1279,12 +1297,13 @@
           <div class="cb-title"><span class="ja">通貨設定</span><span class="en">Currency</span></div>
           <div class="cb-item">
             <label><span class="ja">表示通貨</span><span class="en">Display</span></label>
-            <select id="currency">
-              <option value="HKD">HKD (香港ドル)</option>
-              <option value="USD">USD (米ドル)</option>
-              <option value="JPY">JPY (日本円)</option>
-              <option value="EUR">EUR (ユーロ)</option>
-            </select>
+            <div class="currency-btns" role="group">
+              <button type="button" class="cur-btn active" data-cur="HKD">HKD</button>
+              <button type="button" class="cur-btn" data-cur="USD">USD</button>
+              <button type="button" class="cur-btn" data-cur="JPY">JPY</button>
+              <button type="button" class="cur-btn" data-cur="EUR">EUR</button>
+            </div>
+            <input type="hidden" id="currency" value="HKD">
           </div>
           <div class="cb-item">
             <label>AED → <span id="fxRateLabel">HKD</span></label>
@@ -2087,13 +2106,19 @@ function applyNetLabels(cur) {
   document.querySelectorAll(".net-label-en").forEach(el => { el.textContent = lbl.en; });
 }
 
-document.getElementById("currency").addEventListener("change", (e) => {
-  const cur = e.target.value;
+function setCurrency(cur) {
+  document.getElementById("currency").value = cur;
+  document.querySelectorAll(".cur-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.cur === cur);
+  });
   document.getElementById("fxRate").value = DEFAULT_FX[cur] ?? 1;
   document.getElementById("fxRateLabel").textContent = cur;
   document.querySelectorAll(".cur-label").forEach(el => { el.textContent = cur; });
   applyNetLabels(cur);
   render();
+}
+document.querySelectorAll(".cur-btn").forEach(btn => {
+  btn.addEventListener("click", () => setCurrency(btn.dataset.cur));
 });
 
 let scenarioChart = null, cumulativeChart = null;
