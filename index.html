@@ -2394,6 +2394,14 @@ function generateReport() {
       <span><span style="display:inline-block; width:10px; height:10px; background:#fde68a; border-radius:2px; vertical-align:middle; margin-right:4px;"></span>${T("空室期間", "Vacant")}</span>
     </div>`;
 
+  // Force-draw both charts before capturing — drawScenarioChart bails out
+  // when chartVisible is false, leaving the chart instance null. We need
+  // the images for the report regardless of UI toggle state.
+  const wasChartVisible = chartVisible;
+  chartVisible = true;
+  if (typeof drawScenarioChart === "function") drawScenarioChart(r.scenarios);
+  if (typeof drawCumulativeChart === "function") drawCumulativeChart(r.cashflowSeries);
+  chartVisible = wasChartVisible;
   // Capture chart images via Chart.js toBase64Image (PNG)
   const scenImgSrc = (typeof scenarioChart !== "undefined" && scenarioChart) ? scenarioChart.toBase64Image() : null;
   const cumImgSrc = (typeof cumulativeChart !== "undefined" && cumulativeChart) ? cumulativeChart.toBase64Image() : null;
