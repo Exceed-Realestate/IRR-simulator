@@ -997,6 +997,78 @@
     body.print-sim-only .timeline-chart { page-break-inside: avoid; }
     body.print-sim-only #holdBreakdown { page-break-inside: avoid; }
     body.print-sim-only #irrBreakdownModal { display: none !important; }
+  }
+
+  /* Custom client-ready report — hidden by default, shown only in report-mode */
+  #customReport { display: none; }
+  body.report-mode > *:not(#customReport):not(script):not(style) { display: none !important; }
+  body.report-mode #customReport {
+    display: block !important;
+    background: #fff; color: #1f2937; font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11px; line-height: 1.4;
+    max-width: 210mm; margin: 0 auto; padding: 8mm 0;
+  }
+  #customReport .rpt-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    border-bottom: 3px solid #0a2540; padding-bottom: 8px; margin-bottom: 14px;
+  }
+  #customReport .rpt-brand-name { font-size: 16px; font-weight: 700; color: #0a2540; letter-spacing: 0.5px; }
+  #customReport .rpt-brand-sub { font-size: 10px; color: #c9a961; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+  #customReport .rpt-meta { font-size: 11px; color: #4b5563; text-align: right; }
+  #customReport .rpt-cover {
+    background: linear-gradient(135deg, #0a2540 0%, #1e3a5f 100%); color: #fff;
+    padding: 20px; border-radius: 8px; margin-bottom: 18px; page-break-inside: avoid;
+  }
+  #customReport .rpt-property-name { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  #customReport .rpt-property-meta { font-size: 11px; opacity: 0.85; margin-bottom: 16px; }
+  #customReport .rpt-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  #customReport .rpt-kpi { background: rgba(255,255,255,0.08); padding: 12px; border-radius: 6px; }
+  #customReport .rpt-kpi-label { font-size: 9px; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  #customReport .rpt-kpi-value { font-size: 18px; font-weight: 700; color: #c9a961; }
+  #customReport .rpt-kpi-sub { font-size: 9px; opacity: 0.7; margin-top: 2px; }
+  #customReport .rpt-section {
+    margin-bottom: 16px; page-break-inside: avoid;
+  }
+  #customReport .rpt-section h2 {
+    font-size: 13px; font-weight: 700; color: #0a2540;
+    border-bottom: 2px solid #c9a961; padding-bottom: 4px; margin: 0 0 10px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  #customReport .rpt-section h4 {
+    font-size: 11px; font-weight: 700; color: #0a2540; margin: 0 0 6px;
+  }
+  #customReport .rpt-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  #customReport .rpt-tbl { width: 100%; border-collapse: collapse; font-size: 10px; }
+  #customReport .rpt-tbl td, #customReport .rpt-tbl th { padding: 4px 6px; vertical-align: top; }
+  #customReport .rpt-tbl-bordered { border: 1px solid #e5e7eb; }
+  #customReport .rpt-tbl-bordered thead { background: #0a2540; color: #fff; }
+  #customReport .rpt-tbl-bordered th { font-weight: 600; padding: 6px 8px; }
+  #customReport .rpt-tbl-bordered tbody tr { border-bottom: 1px solid #e5e7eb; }
+  #customReport .rpt-tbl-bordered tbody tr:nth-child(even) { background: #f9fafb; }
+  #customReport .rpt-tbl-bordered tfoot { background: #fef9e7; font-weight: 700; }
+  #customReport .rpt-tbl-bordered tfoot td { padding: 6px 8px; }
+  #customReport .rpt-breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  #customReport .rpt-bd-item {
+    border-radius: 6px; padding: 10px 12px;
+  }
+  #customReport .rpt-bd-construction { background: #f1f5f9; border-left: 4px solid #94a3b8; }
+  #customReport .rpt-bd-operating    { background: #ecfdf5; border-left: 4px solid #10b981; }
+  #customReport .rpt-bd-vacant       { background: #fef9c3; border-left: 4px solid #f59e0b; }
+  #customReport .rpt-bd-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #4b5563; }
+  #customReport .rpt-bd-value { font-size: 16px; font-weight: 700; color: #0a2540; margin-top: 2px; }
+  #customReport .rpt-bd-sub   { font-size: 9px; color: #6b7280; margin-top: 2px; }
+  #customReport .rpt-page-break { page-break-before: always; }
+  #customReport .rpt-footer {
+    margin-top: 20px; padding-top: 10px;
+    border-top: 1px solid #e5e7eb; font-size: 9px; color: #6b7280;
+  }
+  #customReport .rpt-disclaimer { margin-bottom: 8px; line-height: 1.5; }
+  #customReport .rpt-contact { font-size: 9px; color: #4b5563; }
+  @media print {
+    body.report-mode { background: #fff !important; }
+    body.report-mode #customReport { padding: 0; }
+    #customReport .rpt-cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #customReport .rpt-tbl-bordered thead { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
     /* SINGLE COLUMN flow — packed tight to fit landscape A4 in 2 pages */
     body.print-sim-only .simulator-container {
@@ -2174,12 +2246,258 @@ window.addEventListener("afterprint", () => {
 // =========== PRINT / PDF (Simulator only — native preview, LANDSCAPE) ===========
 // Click → browser opens print preview showing only the simulator → user
 // chooses "Save as PDF" or prints. Injects a landscape @page rule at runtime.
-// Wrapper exposed via the prominent "Generate Report" button. Closes any
-// open modal first, then triggers the print-to-PDF flow.
+// Generate a custom client-ready PDF report with a clean, designed layout
+// (NOT a screenshot of the simulator UI — that's downloadSimulatorPDF()).
 function generateReport() {
   if (typeof closeIrrBreakdown === "function") closeIrrBreakdown();
   if (typeof closeCustomPropertyModal === "function") closeCustomPropertyModal();
-  downloadSimulatorPDF();
+  if (typeof closeBrochureModal === "function") closeBrochureModal();
+
+  const inp = getInputs();
+  const r = calculate(inp);
+  const fx = inp.fxRate;
+  const cur = inp.currency;
+  const fmtN = (n) => Math.round(n).toLocaleString();
+  const fmtP = (n) => (n * 100).toFixed(1) + "%";
+
+  // Property name from preset selector
+  const presetSel = document.getElementById("preset");
+  const propName = presetSel.options[presetSel.selectedIndex]?.text?.replace(/\s*\([\d.]+M\)\s*$/, "") || "Custom Property";
+
+  // Quarter range helpers
+  const qStr = (qAbs) => `Q${(qAbs % 4) + 1} ${Math.floor(qAbs / 4)}`;
+  const purchaseQ = inp.purchaseYear * 4 + (inp.purchaseQuarter - 1);
+  const handoverQ = inp.completionYear * 4 + (inp.completionQuarter - 1);
+  const totalQ = Math.max(1, inp.holdYears * 4 + (inp.holdQuarters || 0));
+  const saleQ = purchaseQ + totalQ - 1;
+  const constrQ = Math.max(0, Math.min(handoverQ, saleQ + 1) - purchaseQ);
+  const operQ = Math.max(0, saleQ - Math.max(handoverQ, purchaseQ) + 1);
+  const numLeases = Math.floor(operQ / 4);
+  const leasedQ = numLeases * 4;
+  const vacantQ = operQ - leasedQ;
+  const fmtDur = (q) => q === 0 ? "—" : (q < 4 ? `${q*3}m` : (q%4===0 ? `${q/4}y` : `${Math.floor(q/4)}y ${(q%4)*3}m`));
+
+  // Cash flow timeline rows (year-from-purchase rolling)
+  const cfRows = (r.cashflowSeries || []).map((v, i) => {
+    if (i === 0) return `<tr><td>Year 0 (Purchase)</td><td style="text-align:right;">${fmtN(v)} AED</td></tr>`;
+    const yStart = purchaseQ + (i-1) * 4;
+    const yEnd = Math.min(yStart + 3, saleQ);
+    return `<tr><td>Year ${i} <span style="color:#94a3b8;font-size:9px;">${qStr(yStart)} → ${qStr(yEnd)}</span></td><td style="text-align:right; color:${v>=0?'#16a34a':'#dc2626'};">${v>=0?'+':''}${fmtN(v)} AED</td></tr>`;
+  }).join("");
+
+  // Initial outlay rows
+  const outlayRows = [
+    ["Down payment", r.cashDown, "After loan deduction"],
+    ["DLD registration (4% + AED 580)", r.dld, "Price × 4%"],
+    ["Trustee / Title / Oqood", r.trustee + r.titleDeed + r.oqood, "Registration"],
+    ["NOC fee", r.noc, "Industry standard"],
+    ["Agent fee (2% + 5% VAT)", r.agentFee, "Price × 2.1%"],
+    ...(inp.useMortgage ? [["Mortgage registration", r.mortgageReg, "Loan × 0.25% + AED 290"]] : []),
+    ...(inp.useMortgage ? [["Broker fee (1%)", r.brokerFee, "Loan × 1%"]] : []),
+    ...(inp.furniture > 0 ? [["Furniture", r.furniture, "Furnishing"]] : []),
+  ].map(([label, val, note]) => `<tr><td>${label}</td><td style="text-align:right; font-family:monospace;">${fmtN(val)} AED</td><td style="font-size:10px; color:#94a3b8;">${note}</td></tr>`).join("");
+
+  // Sale breakdown rows
+  const saleRows = [
+    ["Sale price (gross)", r.salePrice, `+${inp.appreciation}% on ${fmtN(inp.price)}`],
+    ["Sale agent fee (2.1%)", -r.saleAgentFee, "Sale × 2.1%"],
+    ["NOC (sale)", -r.saleNOC, "Fixed"],
+    ...(r.remainingLoan > 0 ? [["Remaining loan payoff", -r.remainingLoan, `${inp.mortgageTerm}y mortgage`]] : []),
+    ["UAE capital gains", 0, "0% — no CGT"],
+    ["HK receipt tax", 0, "Territorial — exempt"],
+  ].map(([label, val, note]) => `<tr><td>${label}</td><td style="text-align:right; font-family:monospace; color:${val>=0?'#16a34a':'#dc2626'};">${val>=0?'+':''}${fmtN(val)} AED</td><td style="font-size:10px; color:#94a3b8;">${note}</td></tr>`).join("");
+
+  // Scenario rows
+  const s = r.scenarios || {};
+  const scenRows = ["s1","s2","s3","s4"].filter(k => s[k]).map(k => {
+    const titles = { s1: "① Off-Plan / Short Hold (2y)", s2: "② Post-Handover Mid (4y)", s3: "③ Long-Term Hold (7y)", s4: `④ Custom (${inp.s4Years || 5}y)` };
+    return `<tr><td>${titles[k]}</td><td style="text-align:right;">${fmtP(s[k].return)}</td><td style="text-align:right;">${fmtP(s[k].irr)}</td><td style="text-align:right;">${fmtN(s[k].net * fx)} ${cur}</td></tr>`;
+  }).join("");
+
+  // Build report HTML
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,"0")}/${String(today.getDate()).padStart(2,"0")}`;
+
+  const reportHTML = `
+    <header class="rpt-header">
+      <div>
+        <div class="rpt-brand-name">EXCEED REAL ESTATE L.L.C.</div>
+        <div class="rpt-brand-sub">Dubai Investment Simulation Report</div>
+      </div>
+      <div class="rpt-meta">
+        <div>${dateStr}</div>
+        <div style="font-size:9px; color:#94a3b8;">Ref: ${today.getTime().toString(36).toUpperCase()}</div>
+      </div>
+    </header>
+
+    <section class="rpt-cover">
+      <div class="rpt-property-name">${propName}</div>
+      <div class="rpt-property-meta">
+        <span>${inp.propertyType || "Branded"}</span> ·
+        <span>${fmtN(inp.sqft)} sqft</span> ·
+        <span>${(inp.purchaseMode || "off-plan").replace("offplan","Off-plan")}</span> ·
+        <span>Completion: ${qStr(handoverQ)}</span>
+      </div>
+      <div class="rpt-kpis">
+        <div class="rpt-kpi">
+          <div class="rpt-kpi-label">Annual IRR</div>
+          <div class="rpt-kpi-value">${fmtP(r.irr)}</div>
+          <div class="rpt-kpi-sub">${r.multiple.toFixed(2)}× total return</div>
+        </div>
+        <div class="rpt-kpi">
+          <div class="rpt-kpi-label">Net Sale Proceeds</div>
+          <div class="rpt-kpi-value">${fmtN(r.netSaleProceeds * fx)} ${cur}</div>
+          <div class="rpt-kpi-sub">${fmtN(r.netSaleProceeds)} AED</div>
+        </div>
+        <div class="rpt-kpi">
+          <div class="rpt-kpi-label">Initial Outlay</div>
+          <div class="rpt-kpi-value">${fmtN(r.initialCashAED)} AED</div>
+          <div class="rpt-kpi-sub">${fmtN(r.initialCashAED * fx)} ${cur}</div>
+        </div>
+        <div class="rpt-kpi">
+          <div class="rpt-kpi-label">Hold Period</div>
+          <div class="rpt-kpi-value">${(totalQ/4).toFixed(2)}y</div>
+          <div class="rpt-kpi-sub">${qStr(purchaseQ)} → ${qStr(saleQ)}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rpt-section">
+      <h2>Investment Terms</h2>
+      <div class="rpt-cols">
+        <div class="rpt-col">
+          <h4>Property</h4>
+          <table class="rpt-tbl">
+            <tr><td>Price</td><td>${fmtN(inp.price)} AED</td></tr>
+            <tr><td>Size</td><td>${fmtN(inp.sqft)} sqft (${(inp.sqft*0.0929).toFixed(1)} m²)</td></tr>
+            <tr><td>Service charge</td><td>${inp.serviceChargePsf} AED/sqft/yr</td></tr>
+            <tr><td>Type</td><td>${inp.propertyType || "Branded"}</td></tr>
+          </table>
+        </div>
+        <div class="rpt-col">
+          <h4>Loan</h4>
+          <table class="rpt-tbl">
+            ${inp.useMortgage ? `
+              <tr><td>LTV</td><td>${inp.ltv}%</td></tr>
+              <tr><td>Loan amount</td><td>${fmtN(r.loanAmount)} AED</td></tr>
+              <tr><td>Rate / Term</td><td>${inp.mortgageRate}% / ${inp.mortgageTerm}y</td></tr>
+              <tr><td>Monthly payment</td><td>${fmtN(r.annualLoanPayment/12)} AED</td></tr>
+            ` : `<tr><td colspan="2" style="color:#94a3b8;">Cash purchase</td></tr>`}
+          </table>
+        </div>
+        <div class="rpt-col">
+          <h4>Operating Assumptions</h4>
+          <table class="rpt-tbl">
+            <tr><td>Gross yield</td><td>${inp.grossYield}% / yr</td></tr>
+            <tr><td>Vacancy</td><td>${inp.vacancy}%</td></tr>
+            <tr><td>PM fee</td><td>${inp.pmFee}%</td></tr>
+            <tr><td>Appreciation</td><td>${inp.appreciation}% (${inp.appreciationMode||"cumulative"})</td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="rpt-section">
+      <h2>Holding Period Breakdown</h2>
+      <div class="rpt-breakdown">
+        <div class="rpt-bd-item rpt-bd-construction">
+          <div class="rpt-bd-label">Construction</div>
+          <div class="rpt-bd-value">${fmtDur(constrQ)}</div>
+          <div class="rpt-bd-sub">${qStr(purchaseQ)} → ${qStr(handoverQ - 1)}</div>
+        </div>
+        <div class="rpt-bd-item rpt-bd-operating">
+          <div class="rpt-bd-label">Operating (leased)</div>
+          <div class="rpt-bd-value">${fmtDur(leasedQ)}</div>
+          <div class="rpt-bd-sub">${numLeases} × 1-year lease</div>
+        </div>
+        ${vacantQ > 0 ? `
+        <div class="rpt-bd-item rpt-bd-vacant">
+          <div class="rpt-bd-label">Residual (no lease)</div>
+          <div class="rpt-bd-value">${fmtDur(vacantQ)}</div>
+          <div class="rpt-bd-sub">Cannot fit 1-yr lease</div>
+        </div>` : ''}
+      </div>
+    </section>
+
+    <section class="rpt-section rpt-page-break">
+      <h2>Initial Outlay Breakdown</h2>
+      <table class="rpt-tbl rpt-tbl-bordered">
+        <thead><tr><th>Item</th><th style="text-align:right;">Amount (AED)</th><th>Notes</th></tr></thead>
+        <tbody>${outlayRows}</tbody>
+        <tfoot><tr><td><strong>Total</strong></td><td style="text-align:right;"><strong>${fmtN(r.initialCashAED)} AED</strong></td><td>${fmtN(r.initialCashAED * fx)} ${cur}</td></tr></tfoot>
+      </table>
+    </section>
+
+    <section class="rpt-section">
+      <h2>Annual Cash Flow Detail</h2>
+      <table class="rpt-tbl rpt-tbl-bordered">
+        <thead><tr><th>Period</th><th style="text-align:right;">Net Cash Flow</th></tr></thead>
+        <tbody>${cfRows}</tbody>
+      </table>
+    </section>
+
+    <section class="rpt-section">
+      <h2>Sale (Exit) Breakdown</h2>
+      <table class="rpt-tbl rpt-tbl-bordered">
+        <thead><tr><th>Item</th><th style="text-align:right;">Amount (AED)</th><th>Notes</th></tr></thead>
+        <tbody>${saleRows}</tbody>
+        <tfoot><tr><td><strong>Net to client</strong></td><td style="text-align:right; color:#16a34a;"><strong>+${fmtN(r.netSaleProceeds)} AED</strong></td><td><strong>${fmtN(r.netSaleProceeds * fx)} ${cur}</strong></td></tr></tfoot>
+      </table>
+    </section>
+
+    ${scenRows ? `
+    <section class="rpt-section">
+      <h2>Alternative Holding Scenarios</h2>
+      <table class="rpt-tbl rpt-tbl-bordered">
+        <thead><tr><th>Scenario</th><th style="text-align:right;">Total Return</th><th style="text-align:right;">Annual IRR</th><th style="text-align:right;">Net Proceeds</th></tr></thead>
+        <tbody>${scenRows}</tbody>
+      </table>
+    </section>` : ''}
+
+    <footer class="rpt-footer">
+      <div class="rpt-disclaimer">
+        <strong>Assumptions:</strong> DLD 4%, Agent 2%+VAT, Trustee AED 4,000, NOC AED 5,000, Mortgage registration 0.25%, Sale agent 2.1%, UAE CGT 0%, HK territorial tax (exempt).<br>
+        <strong>Disclaimer:</strong> This simulation is for indicative purposes only. Actual returns depend on market conditions, FX, interest rates, and property-specific factors. Not a guarantee of return.
+      </div>
+      <div class="rpt-contact">
+        <strong>EXCEED REAL ESTATE L.L.C.</strong> · #2407 The Regal Tower, Business Bay, Dubai · TEL +971 4 529 9070 · info@exceed-re.ae · exceed.estate<br>
+        Commercial License No. 1180254 / RERA No. 35328
+      </div>
+    </footer>
+  `;
+
+  let reportEl = document.getElementById("customReport");
+  if (!reportEl) {
+    reportEl = document.createElement("div");
+    reportEl.id = "customReport";
+    document.body.appendChild(reportEl);
+  }
+  reportEl.innerHTML = reportHTML;
+
+  // Set document title for sensible default PDF filename
+  const originalTitle = document.title;
+  document.title = `Exceed_Investment_Report_${today.toISOString().slice(0,10)}`;
+
+  // Inject A4 portrait page rule
+  let pageStyle = document.getElementById("rpt-page-rule");
+  if (pageStyle) pageStyle.remove();
+  pageStyle = document.createElement("style");
+  pageStyle.id = "rpt-page-rule";
+  pageStyle.textContent = "@media print { @page { size: A4 portrait !important; margin: 14mm 12mm !important; } }";
+  document.head.appendChild(pageStyle);
+
+  document.body.classList.add("report-mode");
+  setTimeout(() => window.print(), 200);
+
+  const cleanup = () => {
+    document.body.classList.remove("report-mode");
+    document.title = originalTitle;
+    const el = document.getElementById("rpt-page-rule");
+    if (el) el.remove();
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  setTimeout(cleanup, 60000);
 }
 
 function downloadSimulatorPDF() {
