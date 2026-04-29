@@ -2303,9 +2303,11 @@ function generateReport() {
   const saleQ = purchaseQ + totalQ - 1;
   const constrQ = Math.max(0, Math.min(handoverQ, saleQ + 1) - purchaseQ);
   const operQ = Math.max(0, saleQ - Math.max(handoverQ, purchaseQ) + 1);
-  const numLeases = Math.floor(operQ / 4);
-  const leasedQ = numLeases * 4;
-  const vacantQ = operQ - leasedQ;
+  // Bug #2 fix: only split into leased+vacant when Dubai toggle is ON.
+  const dubaiOnRpt2 = !!document.getElementById("dubaiRuleToggle")?.checked;
+  const numLeases = dubaiOnRpt2 ? Math.floor(operQ / 4) : 0;
+  const leasedQ = dubaiOnRpt2 ? numLeases * 4 : operQ;
+  const vacantQ = dubaiOnRpt2 ? (operQ - leasedQ) : 0;
   const fmtDur = (q) => {
     if (q === 0) return "—";
     const months = q * 3;
@@ -2483,6 +2485,7 @@ function generateReport() {
             <tr><td>${T("グロス利回り", "Gross yield")}</td><td>${inp.grossYield}% / ${T("年", "yr")}</td></tr>
             <tr><td>${T("空室率", "Vacancy")}</td><td>${inp.vacancy}%</td></tr>
             <tr><td>${T("PM費", "PM fee")}</td><td>${inp.pmFee}%</td></tr>
+            <tr><td>${T("保守・修繕費", "Maintenance")}</td><td>0.2% × ${T("価格", "price")} = ${fmtN(r.maintenance)} AED/yr</td></tr>
             <tr><td>${T("値上がり率", "Appreciation")}</td><td>${inp.appreciation}% (${inp.appreciationMode==="annual"?T("年率","annual"):T("累計","cumulative")})</td></tr>
           </table>
         </div>
@@ -2492,16 +2495,18 @@ function generateReport() {
     <section class="rpt-section">
       <h2>${T("保有期間内訳", "Holding Period Breakdown")}</h2>
       <div class="rpt-breakdown">
+        ${constrQ > 0 ? `
         <div class="rpt-bd-item rpt-bd-construction">
           <div class="rpt-bd-label">${T("建設中", "Construction")}</div>
           <div class="rpt-bd-value">${fmtDur(constrQ)}</div>
           <div class="rpt-bd-sub">${qStr(purchaseQ)} → ${qStr(handoverQ - 1)}</div>
-        </div>
+        </div>` : ''}
+        ${leasedQ > 0 ? `
         <div class="rpt-bd-item rpt-bd-operating">
-          <div class="rpt-bd-label">${T("運用中（賃貸）", "Operating (leased)")}</div>
+          <div class="rpt-bd-label">${dubaiOnRpt2 ? T("運用中（賃貸）", "Operating (leased)") : T("運用中", "Operating")}</div>
           <div class="rpt-bd-value">${fmtDur(leasedQ)}</div>
-          <div class="rpt-bd-sub">${numLeases} × ${T("1年契約", "1-year lease")}</div>
-        </div>
+          <div class="rpt-bd-sub">${dubaiOnRpt2 && numLeases > 0 ? `${numLeases} × ${T("1年契約", "1-year lease")}` : T("家賃発生期間", "rental period")}</div>
+        </div>` : ''}
         ${vacantQ > 0 ? `
         <div class="rpt-bd-item rpt-bd-vacant">
           <div class="rpt-bd-label">${T("空室期間", "Residual (no lease)")}</div>
@@ -3828,9 +3833,12 @@ function drawHoldBreakdown({ purchaseQ, handoverQ, saleQ }) {
 
   const constructionQ = Math.max(0, Math.min(handoverQ, saleQ + 1) - purchaseQ);
   const operatingQ = Math.max(0, saleQ - Math.max(handoverQ, purchaseQ) + 1);
-  const numLeases = Math.floor(operatingQ / 4);
-  const leasedQ = numLeases * 4;
-  const vacantQ = operatingQ - leasedQ;
+  // Bug #2 fix: only split operating into leased+vacant if Dubai toggle is ON.
+  // Otherwise the breakdown contradicts the CF table (which prorates rent).
+  const dubaiOn = !!document.getElementById("dubaiRuleToggle")?.checked;
+  const numLeases = dubaiOn ? Math.floor(operatingQ / 4) : 0;
+  const leasedQ = dubaiOn ? numLeases * 4 : operatingQ;
+  const vacantQ = dubaiOn ? (operatingQ - leasedQ) : 0;
 
   const fmtDur = (q) => {
     if (q === 0) return "—";
@@ -3848,7 +3856,7 @@ function drawHoldBreakdown({ purchaseQ, handoverQ, saleQ }) {
   };
 
   const segs = [];
-  if (constructionQ > 0) {
+  if (constructionQ > 0) {  // Bug #1 fix: only show construction if any
     segs.push(`<span style="display:inline-flex;align-items:center;gap:4px;">
       <span style="display:inline-block;width:10px;height:10px;background:#94a3b8;border-radius:2px;"></span>
       <span class="ja">建設中: <strong>${fmtDur(constructionQ)}</strong></span>
@@ -3858,8 +3866,8 @@ function drawHoldBreakdown({ purchaseQ, handoverQ, saleQ }) {
   if (leasedQ > 0) {
     segs.push(`<span style="display:inline-flex;align-items:center;gap:4px;">
       <span style="display:inline-block;width:10px;height:10px;background:var(--s2);border-radius:2px;"></span>
-      <span class="ja">運用中: <strong>${fmtDur(leasedQ)}</strong> <small>(${numLeases}件の1年契約)</small></span>
-      <span class="en">Operating: <strong>${fmtDurEn(leasedQ)}</strong> <small>(${numLeases} × 1-yr lease)</small></span>
+      <span class="ja">運用中: <strong>${fmtDur(leasedQ)}</strong>${dubaiOn && numLeases > 0 ? ` <small>(${numLeases}件の1年契約)</small>` : ''}</span>
+      <span class="en">Operating: <strong>${fmtDurEn(leasedQ)}</strong>${dubaiOn && numLeases > 0 ? ` <small>(${numLeases} × 1-yr lease)</small>` : ''}</span>
     </span>`);
   }
   if (vacantQ > 0) {
