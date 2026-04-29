@@ -1321,19 +1321,27 @@
             </div>
           </div>
           <div class="field">
-            <label><span class="ja">完成予定年</span><span class="en">Completion Year</span></label>
-            <select id="completionYear">
-              <option value="2026">2026</option>
-              <option value="2027">2027</option>
-              <option value="2028" selected>2028</option>
-              <option value="2029">2029</option>
-              <option value="2030">2030</option>
-              <option value="2031">2031</option>
-              <option value="2032">2032</option>
-              <option value="2033">2033</option>
-              <option value="2034">2034</option>
-              <option value="2035">2035</option>
-            </select>
+            <label><span class="ja">完成予定年・四半期</span><span class="en">Completion Year &amp; Quarter</span></label>
+            <div style="display:flex; gap:6px;">
+              <select id="completionYear" style="flex:1">
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028" selected>2028</option>
+                <option value="2029">2029</option>
+                <option value="2030">2030</option>
+                <option value="2031">2031</option>
+                <option value="2032">2032</option>
+                <option value="2033">2033</option>
+                <option value="2034">2034</option>
+                <option value="2035">2035</option>
+              </select>
+              <select id="completionQuarter" style="flex:0 0 78px" title="完成四半期 / Completion Quarter">
+                <option value="1" selected>Q1</option>
+                <option value="2">Q2</option>
+                <option value="3">Q3</option>
+                <option value="4">Q4</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -2422,12 +2430,18 @@ function calculate(inp) {
   }
 
   // For SCENARIOS: total years from purchase. Operating = total - construction.
+  // Completion year gets partial CF based on quarter:
+  // Q1=full year, Q2=3/4, Q3=1/2, Q4=1/4
+  const completionFraction = (5 - (inp.completionQuarter || 1)) / 4;
   function scenTotal(totalYears, apprCumulativePct) {
     const operatingYears = Math.max(0, totalYears - constructionYears);
     const cYears = Math.min(constructionYears, totalYears);
     const cf = [-initialCashAED];
     for (let y = 0; y < cYears; y++) cf.push(0);
-    for (let y = 0; y < operatingYears; y++) cf.push(annualNetCF);
+    for (let y = 0; y < operatingYears; y++) {
+      const fraction = (y === 0) ? completionFraction : 1;
+      cf.push(fraction * annualNetCF);
+    }
     const salePrice = p * (1 + apprCumulativePct/100);
     const saleAgentFee = salePrice * 0.021;
     const saleNOC = 5000;
@@ -2495,6 +2509,7 @@ function getInputs() {
     appreciationMode: document.getElementById("appreciationMode").value || "cumulative",
     holdYears: +document.getElementById("holdYears").value || 1,
     completionYear: +document.getElementById("completionYear").value || new Date().getFullYear(),
+    completionQuarter: +document.getElementById("completionQuarter").value || 1,
     fxRate: +document.getElementById("fxRate").value || 2.08,
     currency: document.getElementById("currency").value || "HKD",
     s4Years: +document.getElementById("s4Years").value || 5,
@@ -2712,6 +2727,8 @@ function render() {
   const purchaseYear = new Date().getFullYear();
   const completionYear = inp.completionYear || purchaseYear;
   const cYears = Math.max(0, completionYear - purchaseYear);
+  const quarter = inp.completionQuarter || 1;
+  const cFrac = (5 - quarter) / 4;
   for (let y = 0; y < inp.holdYears; y++) {
     const calendarYear = purchaseYear + y;
     const underConstruction = y < cYears;
@@ -2722,13 +2739,17 @@ function render() {
         <td class="num">—</td><td class="num">—</td><td class="num">—</td>
       </tr>`);
     } else {
-      rows.push(`<tr><td>${calendarYear}</td>
-        <td class="num">${fmt(r.grossRent)}</td>
-        <td class="num" style="color:var(--negative)">${fmt(-r.vacancyLoss)}</td>
-        <td class="num" style="color:var(--negative)">${fmt(-r.pmFee)}</td>
-        <td class="num" style="color:var(--negative)">${fmt(-r.serviceCharge)}</td>
-        <td class="num" style="color:var(--negative)">${fmt(-r.annualLoanPayment)}</td>
-        <td class="num" style="font-weight:600;color:${r.annualNetCF>=0?'var(--positive)':'var(--negative)'}">${fmt(r.annualNetCF)}</td>
+      const isCompletion = (y === cYears);
+      const f = isCompletion ? cFrac : 1;
+      const note = isCompletion ? ` <small style="color:#94a3b8;font-style:italic">Q${quarter}取得 (${(f*100).toFixed(0)}%)</small>` : '';
+      const netCF = r.annualNetCF * f;
+      rows.push(`<tr><td>${calendarYear}${note}</td>
+        <td class="num">${fmt(r.grossRent * f)}</td>
+        <td class="num" style="color:var(--negative)">${fmt(-r.vacancyLoss * f)}</td>
+        <td class="num" style="color:var(--negative)">${fmt(-r.pmFee * f)}</td>
+        <td class="num" style="color:var(--negative)">${fmt(-r.serviceCharge * f)}</td>
+        <td class="num" style="color:var(--negative)">${fmt(-r.annualLoanPayment * f)}</td>
+        <td class="num" style="font-weight:600;color:${netCF>=0?'var(--positive)':'var(--negative)'}">${fmt(netCF)}</td>
       </tr>`);
     }
   }
