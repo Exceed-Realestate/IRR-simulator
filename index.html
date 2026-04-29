@@ -2307,7 +2307,10 @@ function generateReport() {
   // Quarter range helpers
   const qStr = (qAbs) => `${Math.floor(qAbs / 4)} Q${(qAbs % 4) + 1}`;
   const purchaseQ = inp.purchaseYear * 4 + (inp.purchaseQuarter - 1);
-  const handoverQ = inp.completionYear * 4 + (inp.completionQuarter - 1);
+  // handoverQ = first OPERATING quarter (= the quarter immediately after the
+  // completion quarter the user configured). e.g. completion Q4 2027 →
+  // construction runs Q1–Q4 2027, operating starts Q1 2028.
+  const handoverQ = inp.completionYear * 4 + inp.completionQuarter;
   const totalMonthsLocal = Math.max(1, inp.holdYears * 12 + (inp.holdMonths || 0));
   const totalQ = Math.ceil(totalMonthsLocal / 3);
   const saleQ = purchaseQ + totalQ - 1;
@@ -2441,7 +2444,7 @@ function generateReport() {
         <span>${inp.propertyType || "Branded"}</span> ·
         <span>${fmtN(inp.sqft)} sqft</span> ·
         <span>${(inp.purchaseMode || "off-plan").replace("offplan","Off-plan").replace("ready","Ready").replace("secondary","Secondary")}</span> ·
-        <span>${T("完成", "Completion")}: ${qStr(handoverQ)}</span>
+        <span>${T("完成", "Completion")}: ${qStr(handoverQ - 1)}</span>
       </div>
       <div class="rpt-kpis">
         <div class="rpt-kpi">
@@ -3234,7 +3237,8 @@ function calculate(inp) {
   // Calendar-year fractions used for partial first/last calendar years.
   const completionYrLocal = inp.completionYear || currentYear;
   const completionQ_local = inp.completionQuarter || 1;
-  const handoverQabs = completionYrLocal * 4 + (completionQ_local - 1);
+  // handover = first operating quarter = quarter AFTER completion Q user configured.
+  const handoverQabs = completionYrLocal * 4 + completionQ_local;
   const purchaseYr = inp.purchaseYear || currentYear;
   const purchaseQ_local = inp.purchaseQuarter || 1;
   const purchaseQabs = purchaseYr * 4 + (purchaseQ_local - 1);
@@ -3549,7 +3553,7 @@ function render() {
   // V2: replace the IRR card with side-by-side dual display
   if (VF.dualIRR && r.cashflowSeries) {
     const purchaseQabs2 = (inp.purchaseYear || new Date().getFullYear()) * 4 + ((inp.purchaseQuarter || 1) - 1);
-    const handoverQabs2 = (inp.completionYear || new Date().getFullYear()) * 4 + ((inp.completionQuarter || 1) - 1);
+    const handoverQabs2 = (inp.completionYear || new Date().getFullYear()) * 4 + (inp.completionQuarter || 1);
     const opStartIdx = Math.max(0, handoverQabs2 - purchaseQabs2);
     const opStartYearIdx = Math.ceil(opStartIdx / 4);
     // Operating cf = initial outlay + cf from opStartYearIdx onward
@@ -3642,7 +3646,8 @@ function render() {
   const completionYear = inp.completionYear || purchaseYear;
   const quarter = inp.completionQuarter || 1;
   const purchaseQ = purchaseYear * 4 + (purchaseQuarter - 1);
-  const handoverQ = completionYear * 4 + (quarter - 1);
+  // handoverQ = first operating quarter (AFTER the completion quarter)
+  const handoverQ = completionYear * 4 + quarter;
   const totalHoldMonths = Math.max(1, inp.holdYears * 12 + (inp.holdMonths || 0));
   const totalHoldQuarters = Math.ceil(totalHoldMonths / 3);
   const anchorQRender = (VF.holdMode === "operating") ? handoverQ : purchaseQ;
