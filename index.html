@@ -1663,17 +1663,7 @@
               <input type="checkbox" id="dubaiRuleToggle" onchange="render()" style="cursor:pointer;">
               <strong><span class="ja">🇦🇪 ドバイ賃貸ルール</span><span class="en">🇦🇪 Dubai Lease Rule</span></strong>
             </label>
-            <span style="color:var(--text-muted);"><span class="ja">残期間 &lt;1年は新規賃貸契約不可</span><span class="en">Residual &lt;1y can't get new lease</span></span>
-            <span style="display:flex; gap:10px; margin-left:auto;">
-              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                <input type="radio" name="dubaiMode" value="rentZero" checked onchange="render()" style="cursor:pointer;">
-                <span class="ja">賃料0、コスト継続</span><span class="en">Rent=0, costs continue</span>
-              </label>
-              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                <input type="radio" name="dubaiMode" value="ignore" onchange="render()" style="cursor:pointer;">
-                <span class="ja">完全無視</span><span class="en">Ignore entirely</span>
-              </label>
-            </span>
+            <span style="color:var(--text-muted);"><span class="ja">残期間 &lt;1年は新規賃貸契約不可（賃料0、サービスチャージ・ローンは継続）</span><span class="en">Residual &lt;1y can't get new lease (rent=0, costs continue)</span></span>
           </div>
 
           <!-- Calendar timeline chart -->
@@ -3000,10 +2990,9 @@ function render() {
   const ORDINALS_EN = ["First","Second","Third","Fourth","Fifth","Sixth","Seventh","Eighth","Ninth","Tenth"];
   const ordEnLabel = (n) => ORDINALS_EN[n] ? `${ORDINALS_EN[n]} Year` : `Year ${n + 1}`;
 
-  // Dubai 1-year lease rule: residual partial-year at the END of holding has no rent.
+  // Dubai 1-year lease rule: residual partial-year at the END of holding has no rent
+  // (rent=0, but service charge / loan still apply).
   const dubaiOn = !!document.getElementById("dubaiRuleToggle")?.checked;
-  // Mode: "rentZero" (default) — rent=0 but costs continue. Or "ignore" — skip entirely.
-  const dubaiMode = document.querySelector('input[name="dubaiMode"]:checked')?.value || "rentZero";
 
   for (let yi = 0; yi < numRows; yi++) {
     const yearStartQ = anchorQRender + yi * 4;
@@ -3018,10 +3007,9 @@ function render() {
     // Dubai rule: partial last row (all operating, < 4q) is non-leasable
     const isResidualPartial = isLast && f > 0 && f < 1 && (handoverQ <= yearStartQ);
     const dubaiActive = dubaiOn && isResidualPartial;
-    const dubaiIgnore = dubaiActive && dubaiMode === "ignore";
-    // Effective fractions for display/CF
+    // Effective fractions: rent=0 when Dubai rule active, costs always continue
     const fRent = dubaiActive ? 0 : f;
-    const fCost = dubaiIgnore ? 0 : f;
+    const fCost = f;
 
     let statusJa = '', statusEn = '';
     if (isFullConstruction) {
@@ -3047,8 +3035,6 @@ function render() {
 
     let cells;
     if (isFullConstruction) {
-      cells = `<td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>`;
-    } else if (dubaiIgnore) {
       cells = `<td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>`;
     } else {
       const netCF = (r.grossRent * fRent) - (r.vacancyLoss * fRent) - (r.pmFee * fRent) - (r.serviceCharge * fCost) - (r.annualLoanPayment * fCost);
@@ -3077,7 +3063,9 @@ function render() {
     handoverQ,
     saleQ,
     holdYears: numRows,
-    dubaiOn, dubaiMode
+    dubaiOn,
+    purchaseQuarter: inp.purchaseQuarter || 1,
+    totalHoldQuarters
   });
 
   // Auto breakdown: construction / operating (full leases) / vacant (residual)
@@ -3234,7 +3222,7 @@ function drawHoldBreakdown({ purchaseQ, handoverQ, saleQ }) {
 }
 
 // =========== TIMELINE CHART (year × quarter grid) ===========
-function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, dubaiMode }) {
+function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, purchaseQuarter, totalHoldQuarters }) {
   const el = document.getElementById("timelineChart");
   if (!el) return;
   if (saleQ < purchaseQ) { el.innerHTML = ""; return; }
@@ -3242,15 +3230,13 @@ function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, du
   const purchaseYear = Math.floor(purchaseQ / 4);
   const saleYear = Math.floor(saleQ / 4);
 
-  // 1-year-lease rule applied always in the calendar (visualization).
-  // Only complete 4-quarter blocks from handoverQ count as leased.
-  // Residual quarters AFTER the last complete lease are shown vacant (yellow).
-  // The Dubai toggle controls how this is reflected in CF math, not visualization.
+  // 1-year-lease rule: residual quarters after last complete 1-year lease.
+  // Only applied (yellow vacant) when the Dubai toggle is on.
   const operatingQuartersTotal = Math.max(0, saleQ - handoverQ + 1);
   const numFullLeases = Math.floor(operatingQuartersTotal / 4);
   const lastLeasedQ = handoverQ + numFullLeases * 4 - 1;
   const vacantStartQ = lastLeasedQ + 1;
-  const vacantApplies = vacantStartQ <= saleQ && vacantStartQ >= handoverQ;
+  const vacantApplies = dubaiOn && vacantStartQ <= saleQ && vacantStartQ >= handoverQ;
 
   // Header row: Q1 Q2 Q3 Q4
   const header = `<div class="tl-row tl-header">
@@ -3295,8 +3281,82 @@ function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, du
       <span><span class="tl-legend-dot" style="background:#94a3b8"></span><span class="ja">建設中</span><span class="en">Construction</span></span>
       <span><span class="tl-legend-dot" style="background:var(--s2)"></span><span class="ja">運用中</span><span class="en">Operating</span></span>
       <span><span class="tl-legend-dot" style="background:repeating-linear-gradient(45deg,#fde68a,#fde68a 5px,#fef3c7 5px,#fef3c7 10px)"></span><span class="ja">空室期間（賃貸契約外）</span><span class="en">Vacant (no lease)</span></span>
+      <span><span class="tl-legend-dot" style="border:2px solid #ef4444; background:transparent;"></span><span class="ja">1年単位</span><span class="en">1-year unit</span></span>
     </div>
   `;
+
+  // Draw red 1-year-unit outlines (anchored to purchase quarter)
+  requestAnimationFrame(() => drawYearOutlines(el, purchaseQuarter || 1, totalHoldQuarters));
+}
+
+// Red outline overlays grouping every 4 cells (= 1 holding year) starting from purchase Q.
+// May span 2 calendar-year rows; we draw 2 separate boxes that together represent the same year.
+function drawYearOutlines(chartEl, purchaseQuarter, totalHoldQuarters) {
+  if (!chartEl) return;
+  // Clean up previous overlays
+  chartEl.querySelectorAll(".tl-year-overlay").forEach(n => n.remove());
+  chartEl.style.position = "relative";
+  const chartRect = chartEl.getBoundingClientRect();
+  const rows = Array.from(chartEl.querySelectorAll(".tl-row:not(.tl-header)"));
+  if (rows.length === 0) return;
+
+  // Cell index (0-based) where holding starts in the first calendar-year row
+  const startOffset = (purchaseQuarter - 1);
+  const total = totalHoldQuarters || (rows.length * 4);
+  const numFullYears = Math.floor(total / 4);
+  const remainder = total % 4;  // partial last year
+
+  const drawBox = (rowIdx, fromCol, toCol) => {
+    const cells = rows[rowIdx]?.querySelectorAll(".tl-q");
+    if (!cells || !cells[fromCol] || !cells[toCol]) return;
+    const r1 = cells[fromCol].getBoundingClientRect();
+    const r2 = cells[toCol].getBoundingClientRect();
+    const overlay = document.createElement("div");
+    overlay.className = "tl-year-overlay";
+    overlay.style.cssText = `position:absolute; left:${r1.left - chartRect.left - 2}px; top:${r1.top - chartRect.top - 2}px; width:${r2.right - r1.left + 4}px; height:${r1.height + 4}px; border:2px solid #ef4444; border-radius:5px; pointer-events:none; box-sizing:border-box;`;
+    chartEl.appendChild(overlay);
+  };
+
+  // For each full holding year, compute its cells and draw outline(s)
+  for (let y = 0; y < numFullYears; y++) {
+    const startAbs = startOffset + y * 4;          // absolute cell index across all rows (from row 0 col 0)
+    const endAbs = startAbs + 3;                    // last cell of this year
+    const startRow = Math.floor(startAbs / 4);
+    const startCol = startAbs % 4;
+    const endRow = Math.floor(endAbs / 4);
+    const endCol = endAbs % 4;
+    if (startRow >= rows.length) break;
+    if (startRow === endRow) {
+      drawBox(startRow, startCol, endCol);
+    } else {
+      drawBox(startRow, startCol, 3);             // first row tail
+      if (endRow < rows.length) drawBox(endRow, 0, endCol);  // next row head
+    }
+  }
+
+  // Partial last year (if any) — draw with dashed style
+  if (remainder > 0) {
+    const startAbs = startOffset + numFullYears * 4;
+    const endAbs = startAbs + remainder - 1;
+    const startRow = Math.floor(startAbs / 4);
+    const startCol = startAbs % 4;
+    const endRow = Math.floor(endAbs / 4);
+    const endCol = endAbs % 4;
+    const drawDashed = (rowIdx, fromCol, toCol) => {
+      const cells = rows[rowIdx]?.querySelectorAll(".tl-q");
+      if (!cells || !cells[fromCol] || !cells[toCol]) return;
+      const r1 = cells[fromCol].getBoundingClientRect();
+      const r2 = cells[toCol].getBoundingClientRect();
+      const overlay = document.createElement("div");
+      overlay.className = "tl-year-overlay";
+      overlay.style.cssText = `position:absolute; left:${r1.left - chartRect.left - 2}px; top:${r1.top - chartRect.top - 2}px; width:${r2.right - r1.left + 4}px; height:${r1.height + 4}px; border:2px dashed #ef4444; border-radius:5px; pointer-events:none; box-sizing:border-box;`;
+      chartEl.appendChild(overlay);
+    };
+    if (startRow < rows.length) {
+      if (startRow === endRow) drawDashed(startRow, startCol, endCol);
+      else { drawDashed(startRow, startCol, 3); if (endRow < rows.length) drawDashed(endRow, 0, endCol); }
+    }
+  }
 }
 
 document.getElementById("preset").addEventListener("change", (e) => {
