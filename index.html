@@ -1572,14 +1572,15 @@
               <span class="ja">保有期間（年・四半期）<small>※購入から売却までの総期間（建設期間含む）</small></span>
               <span class="en">Holding period (years &amp; quarters) <small>total from purchase, incl. construction</small></span>
             </label>
-            <div style="display:flex; gap:6px;">
-              <input type="number" id="holdYears" value="5" min="0" max="20" step="1" style="flex:1">
-              <select id="holdQuarters" style="flex:0 0 78px" title="追加の四半期 / Additional quarters">
-                <option value="0" selected>Q1</option>
-                <option value="1">Q2</option>
-                <option value="2">Q3</option>
-                <option value="3">Q4</option>
-              </select>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <div style="flex:1; display:flex; gap:4px; align-items:center;">
+                <input type="number" id="holdYears" value="5" min="0" max="20" step="1" style="flex:1">
+                <span style="font-size:11px; color:var(--text-muted);"><span class="ja">年</span><span class="en">y</span></span>
+              </div>
+              <div style="flex:1; display:flex; gap:4px; align-items:center;">
+                <input type="number" id="holdMonths" value="0" min="0" max="11" step="1" style="flex:1">
+                <span style="font-size:11px; color:var(--text-muted);"><span class="ja">ヶ月</span><span class="en">mo</span></span>
+              </div>
             </div>
             <!-- Auto-calculated breakdown: construction / operating / vacant -->
             <div id="holdBreakdown" style="margin-top:8px;"></div>
@@ -2284,59 +2285,117 @@ function generateReport() {
   const fmtN = (n) => Math.round(n).toLocaleString();
   const fmtP = (n) => (n * 100).toFixed(1) + "%";
 
+  // Detect current simulator language (ja/en) — report renders in same language
+  const lang = document.body.getAttribute("data-lang") || "ja";
+  const T = (ja, en) => lang === "ja" ? ja : en;
+
   // Property name from preset selector
   const presetSel = document.getElementById("preset");
-  const propName = presetSel.options[presetSel.selectedIndex]?.text?.replace(/\s*\([\d.]+M\)\s*$/, "") || "Custom Property";
+  const propName = presetSel.options[presetSel.selectedIndex]?.text?.replace(/\s*\([\d.]+M\)\s*$/, "") || T("カスタム物件", "Custom Property");
 
   // Quarter range helpers
-  const qStr = (qAbs) => `Q${(qAbs % 4) + 1} ${Math.floor(qAbs / 4)}`;
+  const qStr = (qAbs) => `${Math.floor(qAbs / 4)} Q${(qAbs % 4) + 1}`;
   const purchaseQ = inp.purchaseYear * 4 + (inp.purchaseQuarter - 1);
   const handoverQ = inp.completionYear * 4 + (inp.completionQuarter - 1);
-  const totalQ = Math.max(1, inp.holdYears * 4 + (inp.holdQuarters || 0));
+  const totalMonthsLocal = Math.max(1, inp.holdYears * 12 + (inp.holdMonths || 0));
+  const totalQ = Math.ceil(totalMonthsLocal / 3);
   const saleQ = purchaseQ + totalQ - 1;
   const constrQ = Math.max(0, Math.min(handoverQ, saleQ + 1) - purchaseQ);
   const operQ = Math.max(0, saleQ - Math.max(handoverQ, purchaseQ) + 1);
   const numLeases = Math.floor(operQ / 4);
   const leasedQ = numLeases * 4;
   const vacantQ = operQ - leasedQ;
-  const fmtDur = (q) => q === 0 ? "—" : (q < 4 ? `${q*3}m` : (q%4===0 ? `${q/4}y` : `${Math.floor(q/4)}y ${(q%4)*3}m`));
+  const fmtDur = (q) => {
+    if (q === 0) return "—";
+    const months = q * 3;
+    const y = Math.floor(months / 12);
+    const m = months % 12;
+    if (lang === "ja") return y === 0 ? `${m}ヶ月` : (m === 0 ? `${y}年` : `${y}年${m}ヶ月`);
+    return y === 0 ? `${m}mo` : (m === 0 ? `${y}y` : `${y}y ${m}mo`);
+  };
 
   // Cash flow timeline rows (year-from-purchase rolling)
   const cfRows = (r.cashflowSeries || []).map((v, i) => {
-    if (i === 0) return `<tr><td>Year 0 (Purchase)</td><td style="text-align:right;">${fmtN(v)} AED</td></tr>`;
+    if (i === 0) return `<tr><td>${T("0年目（購入時）", "Year 0 (Purchase)")}</td><td style="text-align:right;">${fmtN(v)} AED</td></tr>`;
     const yStart = purchaseQ + (i-1) * 4;
     const yEnd = Math.min(yStart + 3, saleQ);
-    return `<tr><td>Year ${i} <span style="color:#94a3b8;font-size:9px;">${qStr(yStart)} → ${qStr(yEnd)}</span></td><td style="text-align:right; color:${v>=0?'#16a34a':'#dc2626'};">${v>=0?'+':''}${fmtN(v)} AED</td></tr>`;
+    return `<tr><td>${T(`${i}年目`, `Year ${i}`)} <span style="color:#94a3b8;font-size:9px;">${qStr(yStart)} → ${qStr(yEnd)}</span></td><td style="text-align:right; color:${v>=0?'#16a34a':'#dc2626'};">${v>=0?'+':''}${fmtN(v)} AED</td></tr>`;
   }).join("");
 
   // Initial outlay rows
   const outlayRows = [
-    ["Down payment", r.cashDown, "After loan deduction"],
-    ["DLD registration (4% + AED 580)", r.dld, "Price × 4%"],
-    ["Trustee / Title / Oqood", r.trustee + r.titleDeed + r.oqood, "Registration"],
-    ["NOC fee", r.noc, "Industry standard"],
-    ["Agent fee (2% + 5% VAT)", r.agentFee, "Price × 2.1%"],
-    ...(inp.useMortgage ? [["Mortgage registration", r.mortgageReg, "Loan × 0.25% + AED 290"]] : []),
-    ...(inp.useMortgage ? [["Broker fee (1%)", r.brokerFee, "Loan × 1%"]] : []),
-    ...(inp.furniture > 0 ? [["Furniture", r.furniture, "Furnishing"]] : []),
+    [T("頭金", "Down payment"), r.cashDown, T("ローン控除後", "After loan deduction")],
+    [T("DLD登記料 (4% + AED 580)", "DLD registration (4% + AED 580)"), r.dld, T("物件価格×4%", "Price × 4%")],
+    [T("Trustee / Title / Oqood", "Trustee / Title / Oqood"), r.trustee + r.titleDeed + r.oqood, T("各種登記", "Registration")],
+    [T("NOC手数料", "NOC fee"), r.noc, T("業界平均", "Industry standard")],
+    [T("エージェント手数料 (2% + 5% VAT)", "Agent fee (2% + 5% VAT)"), r.agentFee, T("価格 × 2.1%", "Price × 2.1%")],
+    ...(inp.useMortgage ? [[T("モーゲージ登記", "Mortgage registration"), r.mortgageReg, T("ローン×0.25% + AED 290", "Loan × 0.25% + AED 290")]] : []),
+    ...(inp.useMortgage ? [[T("ブローカー手数料 (1%)", "Broker fee (1%)"), r.brokerFee, T("ローン×1%", "Loan × 1%")]] : []),
+    ...(inp.furniture > 0 ? [[T("家具家電", "Furniture"), r.furniture, T("家具設備", "Furnishing")]] : []),
   ].map(([label, val, note]) => `<tr><td>${label}</td><td style="text-align:right; font-family:monospace;">${fmtN(val)} AED</td><td style="font-size:10px; color:#94a3b8;">${note}</td></tr>`).join("");
 
   // Sale breakdown rows
   const saleRows = [
-    ["Sale price (gross)", r.salePrice, `+${inp.appreciation}% on ${fmtN(inp.price)}`],
-    ["Sale agent fee (2.1%)", -r.saleAgentFee, "Sale × 2.1%"],
-    ["NOC (sale)", -r.saleNOC, "Fixed"],
-    ...(r.remainingLoan > 0 ? [["Remaining loan payoff", -r.remainingLoan, `${inp.mortgageTerm}y mortgage`]] : []),
-    ["UAE capital gains", 0, "0% — no CGT"],
-    ["HK receipt tax", 0, "Territorial — exempt"],
+    [T("売却価格（グロス）", "Sale price (gross)"), r.salePrice, T(`+${inp.appreciation}% （${fmtN(inp.price)} ベース）`, `+${inp.appreciation}% on ${fmtN(inp.price)}`)],
+    [T("売却エージェント手数料 (2.1%)", "Sale agent fee (2.1%)"), -r.saleAgentFee, T("売却価格×2.1%", "Sale × 2.1%")],
+    [T("NOC（売却時）", "NOC (sale)"), -r.saleNOC, T("固定", "Fixed")],
+    ...(r.remainingLoan > 0 ? [[T("ローン残債返済", "Remaining loan payoff"), -r.remainingLoan, T(`${inp.mortgageTerm}年ローン`, `${inp.mortgageTerm}y mortgage`)]] : []),
+    [T("UAE売却益課税", "UAE capital gains"), 0, T("ゼロ", "0% — no CGT")],
+    [T("香港受取時課税", "HK receipt tax"), 0, T("属地主義で非課税", "Territorial — exempt")],
   ].map(([label, val, note]) => `<tr><td>${label}</td><td style="text-align:right; font-family:monospace; color:${val>=0?'#16a34a':'#dc2626'};">${val>=0?'+':''}${fmtN(val)} AED</td><td style="font-size:10px; color:#94a3b8;">${note}</td></tr>`).join("");
 
   // Scenario rows
   const s = r.scenarios || {};
   const scenRows = ["s1","s2","s3","s4"].filter(k => s[k]).map(k => {
-    const titles = { s1: "① Off-Plan / Short Hold (2y)", s2: "② Post-Handover Mid (4y)", s3: "③ Long-Term Hold (7y)", s4: `④ Custom (${inp.s4Years || 5}y)` };
+    const titles = lang === "ja"
+      ? { s1: "① 短期保有 (2年)", s2: "② 中期保有 (4年)", s3: "③ 長期保有 (7年)", s4: `④ カスタム (${inp.s4Years || 5}年)` }
+      : { s1: "① Short Hold (2y)", s2: "② Mid Hold (4y)", s3: "③ Long Hold (7y)", s4: `④ Custom (${inp.s4Years || 5}y)` };
     return `<tr><td>${titles[k]}</td><td style="text-align:right;">${fmtP(s[k].return)}</td><td style="text-align:right;">${fmtP(s[k].irr)}</td><td style="text-align:right;">${fmtN(s[k].net * fx)} ${cur}</td></tr>`;
   }).join("");
+
+  // Calendar HTML — Y×Q grid showing construction/operating/vacant per quarter
+  const startYrCal = Math.floor(purchaseQ / 4);
+  const endYrCal = Math.floor(saleQ / 4);
+  const opQTotal = Math.max(0, saleQ - handoverQ + 1);
+  const fullLeases = Math.floor(opQTotal / 4);
+  const lastLeasedQ = handoverQ + fullLeases * 4 - 1;
+  const vacantStartQ = lastLeasedQ + 1;
+  const dubaiOnRpt = !!document.getElementById("dubaiRuleToggle")?.checked;
+  let calRows = "";
+  for (let yr = startYrCal, idx = 0; yr <= endYrCal; yr++, idx++) {
+    let cellsHtml = "";
+    for (let q = 0; q < 4; q++) {
+      const qAbs = yr * 4 + q;
+      let bg = "transparent", color = "#cbd5e1", label = "", border = "1px dashed #e5e7eb";
+      if (qAbs >= purchaseQ && qAbs <= saleQ) {
+        if (qAbs < handoverQ) { bg = "#94a3b8"; color = "#fff"; label = T("建設", "Const"); border = "none"; }
+        else if (dubaiOnRpt && qAbs >= vacantStartQ) { bg = "#fde68a"; color = "#78716c"; label = T("空", "Vac"); border = "none"; }
+        else { bg = "#10b981"; color = "#fff"; label = T("運用", "Lease"); border = "none"; }
+      }
+      cellsHtml += `<td style="background:${bg}; color:${color}; text-align:center; font-size:9px; font-weight:600; padding:6px 4px; border:${border}; border-radius:3px;">${label}</td>`;
+    }
+    calRows += `<tr><td style="font-weight:600; padding:4px 8px; font-size:10px; vertical-align:middle;"><div>${T(`${idx + 1}年目`, `Year ${idx + 1}`)}</div><div style="color:#94a3b8; font-size:9px;">${yr}</div></td>${cellsHtml}</tr>`;
+  }
+  const calendarHTML = `
+    <table style="width:100%; border-collapse:separate; border-spacing:3px; font-size:10px;">
+      <thead><tr>
+        <th style="width:80px;"></th>
+        <th style="text-align:center; font-size:10px; color:#6b7280; padding:2px;">Q1</th>
+        <th style="text-align:center; font-size:10px; color:#6b7280; padding:2px;">Q2</th>
+        <th style="text-align:center; font-size:10px; color:#6b7280; padding:2px;">Q3</th>
+        <th style="text-align:center; font-size:10px; color:#6b7280; padding:2px;">Q4</th>
+      </tr></thead>
+      <tbody>${calRows}</tbody>
+    </table>
+    <div style="margin-top:8px; display:flex; gap:14px; font-size:9px; color:#6b7280;">
+      <span><span style="display:inline-block; width:10px; height:10px; background:#94a3b8; border-radius:2px; vertical-align:middle; margin-right:4px;"></span>${T("建設中", "Construction")}</span>
+      <span><span style="display:inline-block; width:10px; height:10px; background:#10b981; border-radius:2px; vertical-align:middle; margin-right:4px;"></span>${T("運用中", "Operating")}</span>
+      <span><span style="display:inline-block; width:10px; height:10px; background:#fde68a; border-radius:2px; vertical-align:middle; margin-right:4px;"></span>${T("空室期間", "Vacant")}</span>
+    </div>`;
+
+  // Capture chart images via Chart.js toBase64Image (PNG)
+  const scenImgSrc = (typeof scenarioChart !== "undefined" && scenarioChart) ? scenarioChart.toBase64Image() : null;
+  const cumImgSrc = (typeof cumulativeChart !== "undefined" && cumulativeChart) ? cumulativeChart.toBase64Image() : null;
 
   // Build report HTML
   const today = new Date();
@@ -2346,7 +2405,7 @@ function generateReport() {
     <header class="rpt-header">
       <div>
         <div class="rpt-brand-name">EXCEED REAL ESTATE L.L.C.</div>
-        <div class="rpt-brand-sub">Dubai Investment Simulation Report</div>
+        <div class="rpt-brand-sub">${T("ドバイ不動産投資シミュレーション", "Dubai Investment Simulation Report")}</div>
       </div>
       <div class="rpt-meta">
         <div>${dateStr}</div>
@@ -2359,129 +2418,141 @@ function generateReport() {
       <div class="rpt-property-meta">
         <span>${inp.propertyType || "Branded"}</span> ·
         <span>${fmtN(inp.sqft)} sqft</span> ·
-        <span>${(inp.purchaseMode || "off-plan").replace("offplan","Off-plan")}</span> ·
-        <span>Completion: ${qStr(handoverQ)}</span>
+        <span>${(inp.purchaseMode || "off-plan").replace("offplan","Off-plan").replace("ready","Ready").replace("secondary","Secondary")}</span> ·
+        <span>${T("完成", "Completion")}: ${qStr(handoverQ)}</span>
       </div>
       <div class="rpt-kpis">
         <div class="rpt-kpi">
-          <div class="rpt-kpi-label">Annual IRR</div>
+          <div class="rpt-kpi-label">${T("年率IRR", "Annual IRR")}</div>
           <div class="rpt-kpi-value">${fmtP(r.irr)}</div>
-          <div class="rpt-kpi-sub">${r.multiple.toFixed(2)}× total return</div>
+          <div class="rpt-kpi-sub">${r.multiple.toFixed(2)}× ${T("総合リターン", "total return")}</div>
         </div>
         <div class="rpt-kpi">
-          <div class="rpt-kpi-label">Net Sale Proceeds</div>
+          <div class="rpt-kpi-label">${T("着金ネット", "Net Sale Proceeds")}</div>
           <div class="rpt-kpi-value">${fmtN(r.netSaleProceeds * fx)} ${cur}</div>
           <div class="rpt-kpi-sub">${fmtN(r.netSaleProceeds)} AED</div>
         </div>
         <div class="rpt-kpi">
-          <div class="rpt-kpi-label">Initial Outlay</div>
+          <div class="rpt-kpi-label">${T("初期手出し", "Initial Outlay")}</div>
           <div class="rpt-kpi-value">${fmtN(r.initialCashAED)} AED</div>
           <div class="rpt-kpi-sub">${fmtN(r.initialCashAED * fx)} ${cur}</div>
         </div>
         <div class="rpt-kpi">
-          <div class="rpt-kpi-label">Hold Period</div>
-          <div class="rpt-kpi-value">${(totalQ/4).toFixed(2)}y</div>
+          <div class="rpt-kpi-label">${T("保有期間", "Hold Period")}</div>
+          <div class="rpt-kpi-value">${(totalMonthsLocal/12).toFixed(2)}${T("年", "y")}</div>
           <div class="rpt-kpi-sub">${qStr(purchaseQ)} → ${qStr(saleQ)}</div>
         </div>
       </div>
     </section>
 
     <section class="rpt-section">
-      <h2>Investment Terms</h2>
+      <h2>${T("投資条件", "Investment Terms")}</h2>
       <div class="rpt-cols">
         <div class="rpt-col">
-          <h4>Property</h4>
+          <h4>${T("物件", "Property")}</h4>
           <table class="rpt-tbl">
-            <tr><td>Price</td><td>${fmtN(inp.price)} AED</td></tr>
-            <tr><td>Size</td><td>${fmtN(inp.sqft)} sqft (${(inp.sqft*0.0929).toFixed(1)} m²)</td></tr>
-            <tr><td>Service charge</td><td>${inp.serviceChargePsf} AED/sqft/yr</td></tr>
-            <tr><td>Type</td><td>${inp.propertyType || "Branded"}</td></tr>
+            <tr><td>${T("価格", "Price")}</td><td>${fmtN(inp.price)} AED</td></tr>
+            <tr><td>${T("面積", "Size")}</td><td>${fmtN(inp.sqft)} sqft (${(inp.sqft*0.0929).toFixed(1)} m²)</td></tr>
+            <tr><td>${T("サービスチャージ", "Service charge")}</td><td>${inp.serviceChargePsf} AED/sqft/${T("年", "yr")}</td></tr>
+            <tr><td>${T("タイプ", "Type")}</td><td>${inp.propertyType || "Branded"}</td></tr>
           </table>
         </div>
         <div class="rpt-col">
-          <h4>Loan</h4>
+          <h4>${T("ローン", "Loan")}</h4>
           <table class="rpt-tbl">
             ${inp.useMortgage ? `
               <tr><td>LTV</td><td>${inp.ltv}%</td></tr>
-              <tr><td>Loan amount</td><td>${fmtN(r.loanAmount)} AED</td></tr>
-              <tr><td>Rate / Term</td><td>${inp.mortgageRate}% / ${inp.mortgageTerm}y</td></tr>
-              <tr><td>Monthly payment</td><td>${fmtN(r.annualLoanPayment/12)} AED</td></tr>
-            ` : `<tr><td colspan="2" style="color:#94a3b8;">Cash purchase</td></tr>`}
+              <tr><td>${T("借入額", "Loan amount")}</td><td>${fmtN(r.loanAmount)} AED</td></tr>
+              <tr><td>${T("金利 / 期間", "Rate / Term")}</td><td>${inp.mortgageRate}% / ${inp.mortgageTerm}${T("年", "y")}</td></tr>
+              <tr><td>${T("月額返済", "Monthly payment")}</td><td>${fmtN(r.annualLoanPayment/12)} AED</td></tr>
+            ` : `<tr><td colspan="2" style="color:#94a3b8;">${T("現金購入", "Cash purchase")}</td></tr>`}
           </table>
         </div>
         <div class="rpt-col">
-          <h4>Operating Assumptions</h4>
+          <h4>${T("運用前提", "Operating Assumptions")}</h4>
           <table class="rpt-tbl">
-            <tr><td>Gross yield</td><td>${inp.grossYield}% / yr</td></tr>
-            <tr><td>Vacancy</td><td>${inp.vacancy}%</td></tr>
-            <tr><td>PM fee</td><td>${inp.pmFee}%</td></tr>
-            <tr><td>Appreciation</td><td>${inp.appreciation}% (${inp.appreciationMode||"cumulative"})</td></tr>
+            <tr><td>${T("グロス利回り", "Gross yield")}</td><td>${inp.grossYield}% / ${T("年", "yr")}</td></tr>
+            <tr><td>${T("空室率", "Vacancy")}</td><td>${inp.vacancy}%</td></tr>
+            <tr><td>${T("PM費", "PM fee")}</td><td>${inp.pmFee}%</td></tr>
+            <tr><td>${T("値上がり率", "Appreciation")}</td><td>${inp.appreciation}% (${inp.appreciationMode==="annual"?T("年率","annual"):T("累計","cumulative")})</td></tr>
           </table>
         </div>
       </div>
     </section>
 
     <section class="rpt-section">
-      <h2>Holding Period Breakdown</h2>
+      <h2>${T("保有期間内訳", "Holding Period Breakdown")}</h2>
       <div class="rpt-breakdown">
         <div class="rpt-bd-item rpt-bd-construction">
-          <div class="rpt-bd-label">Construction</div>
+          <div class="rpt-bd-label">${T("建設中", "Construction")}</div>
           <div class="rpt-bd-value">${fmtDur(constrQ)}</div>
           <div class="rpt-bd-sub">${qStr(purchaseQ)} → ${qStr(handoverQ - 1)}</div>
         </div>
         <div class="rpt-bd-item rpt-bd-operating">
-          <div class="rpt-bd-label">Operating (leased)</div>
+          <div class="rpt-bd-label">${T("運用中（賃貸）", "Operating (leased)")}</div>
           <div class="rpt-bd-value">${fmtDur(leasedQ)}</div>
-          <div class="rpt-bd-sub">${numLeases} × 1-year lease</div>
+          <div class="rpt-bd-sub">${numLeases} × ${T("1年契約", "1-year lease")}</div>
         </div>
         ${vacantQ > 0 ? `
         <div class="rpt-bd-item rpt-bd-vacant">
-          <div class="rpt-bd-label">Residual (no lease)</div>
+          <div class="rpt-bd-label">${T("空室期間", "Residual (no lease)")}</div>
           <div class="rpt-bd-value">${fmtDur(vacantQ)}</div>
-          <div class="rpt-bd-sub">Cannot fit 1-yr lease</div>
+          <div class="rpt-bd-sub">${T("1年契約に収まらない", "Cannot fit 1-yr lease")}</div>
         </div>` : ''}
       </div>
     </section>
 
+    <section class="rpt-section">
+      <h2>${T("カレンダータイムライン", "Calendar Timeline")}</h2>
+      ${calendarHTML}
+    </section>
+
     <section class="rpt-section rpt-page-break">
-      <h2>Initial Outlay Breakdown</h2>
+      <h2>${T("初期手出し内訳", "Initial Outlay Breakdown")}</h2>
       <table class="rpt-tbl rpt-tbl-bordered">
-        <thead><tr><th>Item</th><th style="text-align:right;">Amount (AED)</th><th>Notes</th></tr></thead>
+        <thead><tr><th>${T("項目", "Item")}</th><th style="text-align:right;">AED</th><th>${T("備考", "Notes")}</th></tr></thead>
         <tbody>${outlayRows}</tbody>
-        <tfoot><tr><td><strong>Total</strong></td><td style="text-align:right;"><strong>${fmtN(r.initialCashAED)} AED</strong></td><td>${fmtN(r.initialCashAED * fx)} ${cur}</td></tr></tfoot>
+        <tfoot><tr><td><strong>${T("合計", "Total")}</strong></td><td style="text-align:right;"><strong>${fmtN(r.initialCashAED)} AED</strong></td><td>${fmtN(r.initialCashAED * fx)} ${cur}</td></tr></tfoot>
       </table>
     </section>
 
     <section class="rpt-section">
-      <h2>Annual Cash Flow Detail</h2>
+      <h2>${T("年次キャッシュフロー", "Annual Cash Flow Detail")}</h2>
       <table class="rpt-tbl rpt-tbl-bordered">
-        <thead><tr><th>Period</th><th style="text-align:right;">Net Cash Flow</th></tr></thead>
+        <thead><tr><th>${T("期間", "Period")}</th><th style="text-align:right;">${T("ネットCF", "Net Cash Flow")}</th></tr></thead>
         <tbody>${cfRows}</tbody>
       </table>
     </section>
 
     <section class="rpt-section">
-      <h2>Sale (Exit) Breakdown</h2>
+      <h2>${T("EXIT（売却時）内訳", "Sale (Exit) Breakdown")}</h2>
       <table class="rpt-tbl rpt-tbl-bordered">
-        <thead><tr><th>Item</th><th style="text-align:right;">Amount (AED)</th><th>Notes</th></tr></thead>
+        <thead><tr><th>${T("項目", "Item")}</th><th style="text-align:right;">AED</th><th>${T("備考", "Notes")}</th></tr></thead>
         <tbody>${saleRows}</tbody>
-        <tfoot><tr><td><strong>Net to client</strong></td><td style="text-align:right; color:#16a34a;"><strong>+${fmtN(r.netSaleProceeds)} AED</strong></td><td><strong>${fmtN(r.netSaleProceeds * fx)} ${cur}</strong></td></tr></tfoot>
+        <tfoot><tr><td><strong>${T("着金ネット", "Net to client")}</strong></td><td style="text-align:right; color:#16a34a;"><strong>+${fmtN(r.netSaleProceeds)} AED</strong></td><td><strong>${fmtN(r.netSaleProceeds * fx)} ${cur}</strong></td></tr></tfoot>
       </table>
     </section>
 
+    ${cumImgSrc ? `
+    <section class="rpt-section rpt-page-break">
+      <h2>${T("累積キャッシュフロー", "Cumulative Cash Flow")}</h2>
+      <img src="${cumImgSrc}" style="width:100%; max-width:100%; border:1px solid #e5e7eb; border-radius:6px;">
+    </section>` : ''}
+
     ${scenRows ? `
     <section class="rpt-section">
-      <h2>Alternative Holding Scenarios</h2>
+      <h2>${T("シナリオ比較", "Alternative Holding Scenarios")}</h2>
+      ${scenImgSrc ? `<img src="${scenImgSrc}" style="width:100%; max-width:100%; margin-bottom:10px; border:1px solid #e5e7eb; border-radius:6px;">` : ''}
       <table class="rpt-tbl rpt-tbl-bordered">
-        <thead><tr><th>Scenario</th><th style="text-align:right;">Total Return</th><th style="text-align:right;">Annual IRR</th><th style="text-align:right;">Net Proceeds</th></tr></thead>
+        <thead><tr><th>${T("シナリオ", "Scenario")}</th><th style="text-align:right;">${T("累計リターン", "Total Return")}</th><th style="text-align:right;">${T("年率IRR", "Annual IRR")}</th><th style="text-align:right;">${T("着金ネット", "Net Proceeds")}</th></tr></thead>
         <tbody>${scenRows}</tbody>
       </table>
     </section>` : ''}
 
     <footer class="rpt-footer">
       <div class="rpt-disclaimer">
-        <strong>Assumptions:</strong> DLD 4%, Agent 2%+VAT, Trustee AED 4,000, NOC AED 5,000, Mortgage registration 0.25%, Sale agent 2.1%, UAE CGT 0%, HK territorial tax (exempt).<br>
-        <strong>Disclaimer:</strong> This simulation is for indicative purposes only. Actual returns depend on market conditions, FX, interest rates, and property-specific factors. Not a guarantee of return.
+        <strong>${T("前提：", "Assumptions:")}</strong> DLD 4%, ${T("エージェント", "Agent")} 2%+VAT, Trustee AED 4,000, NOC AED 5,000, ${T("モーゲージ登記", "Mortgage registration")} 0.25%, ${T("売却エージェント", "Sale agent")} 2.1%, UAE CGT 0%, ${T("HK属地主義（非課税）", "HK territorial tax (exempt)")}.<br>
+        <strong>${T("注意：", "Disclaimer:")}</strong> ${T("本シミュレーターは投資判断の参考値であり、実際のリターンを保証するものではありません。市況・為替・金利変動・物件個別事情により結果は変動します。", "This simulation is for indicative purposes only. Actual returns depend on market conditions, FX, interest rates, and property-specific factors. Not a guarantee of return.")}
       </div>
       <div class="rpt-contact">
         <strong>EXCEED REAL ESTATE L.L.C.</strong> · #2407 The Regal Tower, Business Bay, Dubai · TEL +971 4 529 9070 · info@exceed-re.ae · exceed.estate<br>
@@ -2739,7 +2810,7 @@ function openIrrBreakdown() {
         <tr><td style="padding:3px 8px;color:var(--text-muted)">PM費 / PM fee</td><td style="text-align:right;font-family:monospace;">${inp.pmFee}% → -${fmtN(r.pmFee)} AED/年</td></tr>
         <tr><td style="padding:3px 8px;color:var(--text-muted)">サービスチャージ / SC</td><td style="text-align:right;font-family:monospace;">${inp.serviceChargePsf} × ${fmtN(inp.sqft)} = -${fmtN(r.serviceCharge)} AED/年</td></tr>
         <tr><td style="padding:3px 8px;color:var(--text-muted)">累計値上がり / Appreciation</td><td style="text-align:right;font-family:monospace;">${inp.appreciation}%</td></tr>
-        <tr><td style="padding:3px 8px;color:var(--text-muted)">保有期間 / Hold</td><td style="text-align:right;font-family:monospace;">${inp.holdYears}年 + ${inp.holdQuarters || 0}Q (= ${(inp.holdYears * 4 + (inp.holdQuarters || 0)) / 4}年)</td></tr>
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">保有期間 / Hold</td><td style="text-align:right;font-family:monospace;">${inp.holdYears}年 ${inp.holdMonths || 0}ヶ月 (= ${((inp.holdYears * 12 + (inp.holdMonths || 0)) / 12).toFixed(2)}年)</td></tr>
       </table>
     </div>
 
@@ -3063,14 +3134,19 @@ const fmt = (n) => { if (!isFinite(n)) return "—"; const s = n < 0 ? "-" : "";
 const fmtPct = (n) => isFinite(n) ? (n * 100).toFixed(1) + "%" : "—";
 const fmtMult = (n) => isFinite(n) ? n.toFixed(2) + "×" : "—";
 
-function irr(cf, guess = 0.1) {
+// IRR via Newton-Raphson. Optional `times` array specifies actual elapsed
+// years per cf entry; if omitted, falls back to the array index (legacy).
+// Fixes timing bug where partial-year holds (e.g. 2.5y) were placed at
+// integer year 3, deflating IRR.
+function irr(cf, times, guess = 0.1) {
   let rate = guess;
   for (let i = 0; i < 200; i++) {
     let npv = 0, dnpv = 0;
-    for (let t = 0; t < cf.length; t++) {
+    for (let idx = 0; idx < cf.length; idx++) {
+      const t = (times && times[idx] !== undefined) ? times[idx] : idx;
       const d = Math.pow(1 + rate, t);
-      npv += cf[t] / d;
-      if (t > 0) dnpv -= t * cf[t] / (d * (1 + rate));
+      npv += cf[idx] / d;
+      if (t > 0) dnpv -= t * cf[idx] / (d * (1 + rate));
     }
     if (Math.abs(dnpv) < 1e-12) break;
     const nr = rate - npv / dnpv;
@@ -3124,30 +3200,39 @@ function calculate(inp) {
   const purchaseQ_local = inp.purchaseQuarter || 1;
   const purchaseQabs = purchaseYr * 4 + (purchaseQ_local - 1);
 
-  function scenOperating(holdYrsTotal, apprCumulativePct, extraQuarters) {
-    const totalQuarters = Math.max(1, holdYrsTotal * 4 + (extraQuarters || 0));
-    // V1/V5: holdMode === "operating" → anchor sale to handover not purchase
+  function scenOperating(holdYrsTotal, apprCumulativePct, extraMonths) {
+    // extraMonths: 0–11 additional months past holdYrsTotal years.
+    // Total holding in months: holdYrsTotal * 12 + extraMonths.
+    // Total quarters (rounded up for calendar): ceil(totalMonths/3).
+    const totalMonths = Math.max(1, holdYrsTotal * 12 + (extraMonths || 0));
+    const totalQuarters = Math.ceil(totalMonths / 3);
     const anchorQ = (VF.holdMode === "operating") ? handoverQabs : purchaseQabs;
     const saleQabs = anchorQ + totalQuarters - 1;
     const saleYrLocal = Math.floor(saleQabs / 4);
     const numRows = Math.ceil(totalQuarters / 4);
-    // cf array buckets by YEAR-FROM-PURCHASE (rolling 4-quarter windows
-    // anchored to purchase quarter). Last row may be partial when total
-    // quarters is not a multiple of 4.
+    // cf rows still bucketed yearly (calendar resolution). times[] uses
+    // EXACT MONTHS to preserve sub-year precision for IRR.
     const cf = [-initialCashAED];
+    const times = [0];
     for (let yi = 0; yi < numRows; yi++) {
       const yStart = anchorQ + yi * 4;
       const yEnd = Math.min(yStart + 3, saleQabs);
       const overlap = Math.max(0, Math.min(yEnd, saleQabs) - Math.max(yStart, handoverQabs) + 1);
       cf.push((overlap / 4) * annualNetCF);
+      // Time at end of this row, in years from anchor. For all but the last
+      // row this is (yi+1) full years. For the last row, we use the actual
+      // sale time = totalMonths / 12 to fix the partial-year timing bug.
+      const isLastRow = (yi === numRows - 1);
+      const elapsedMonths = isLastRow ? totalMonths : (yi + 1) * 12;
+      times.push(elapsedMonths / 12);
     }
     const salePrice = p * (1 + apprCumulativePct/100);
     const saleAgentFee = salePrice * 0.021;
     const saleNOC = 5000;
-    const opQuarters = Math.max(0, saleQabs - handoverQabs + 1);
+    const opMonths = Math.max(0, totalMonths - Math.max(0, (handoverQabs - anchorQ) * 3));
     let remainingLoan = loanAmount;
     if (inp.useMortgage && loanAmount > 0) {
-      const r = inp.mortgageRate/100/12, n = inp.mortgageTerm*12, k = opQuarters * 3;
+      const r = inp.mortgageRate/100/12, n = inp.mortgageTerm*12, k = opMonths;
       if (r > 0) remainingLoan = loanAmount * (Math.pow(1+r,n) - Math.pow(1+r,k)) / (Math.pow(1+r,n) - 1);
       else remainingLoan = loanAmount * (1 - k/n);
       if (remainingLoan < 0) remainingLoan = 0;
@@ -3155,7 +3240,7 @@ function calculate(inp) {
     const net = salePrice - saleAgentFee - saleNOC - remainingLoan;
     if (cf.length > 1) cf[cf.length-1] += net;
     else cf.push(net);
-    return { cf, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net, operatingYears: opQuarters / 4, saleYr: saleYrLocal };
+    return { cf, times, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net, operatingYears: opMonths / 12, saleYr: saleYrLocal, totalMonths };
   }
 
   // For OFF-PLAN FLIP scenarios (s1): totalYears = total years from purchase,
@@ -3186,8 +3271,8 @@ function calculate(inp) {
   const effectiveCumulativePct = inp.appreciationMode === "annual"
     ? (Math.pow(1 + inp.appreciation/100, totalYearsHeld) - 1) * 100
     : inp.appreciation;
-  const main = scenOperating(inp.holdYears, effectiveCumulativePct, inp.holdQuarters);
-  const mainIrr = irr(main.cf);
+  const main = scenOperating(inp.holdYears, effectiveCumulativePct, inp.holdMonths);
+  const mainIrr = irr(main.cf, main.times);
   const multiple = main.cf.slice(1).reduce((a,b) => a+b, 0) / initialCashAED;
   // Fixed scenarios. s1 = off-plan flip (pre-handover assignment, totalYears
   // semantic). s2/s3/s4 = post-handover holds (operatingYears semantic).
@@ -3205,10 +3290,10 @@ function calculate(inp) {
     irr: mainIrr, multiple, cashflowSeries: main.cf,
     constructionYears, operatingYears: main.operatingYears,
     scenarios: {
-      s1: { irr: irr(s1.cf), net: s1.netSaleProceeds, return: s1.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED },
-      s2: { irr: irr(s2.cf), net: s2.netSaleProceeds, return: s2.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED },
-      s3: { irr: irr(s3.cf), net: s3.netSaleProceeds, return: s3.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED },
-      s4: { irr: irr(s4.cf), net: s4.netSaleProceeds, return: s4.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED }
+      s1: { irr: irr(s1.cf, s1.times), net: s1.netSaleProceeds, return: s1.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED },
+      s2: { irr: irr(s2.cf, s2.times), net: s2.netSaleProceeds, return: s2.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED },
+      s3: { irr: irr(s3.cf, s3.times), net: s3.netSaleProceeds, return: s3.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED },
+      s4: { irr: irr(s4.cf, s4.times), net: s4.netSaleProceeds, return: s4.cf.slice(1).reduce((a,b)=>a+b,0) / initialCashAED }
     }
   };
 }
@@ -3231,7 +3316,7 @@ function getInputs() {
     appreciation: +document.getElementById("appreciation").value || 0,
     appreciationMode: document.getElementById("appreciationMode").value || "cumulative",
     holdYears: +document.getElementById("holdYears").value || 1,
-    holdQuarters: +document.getElementById("holdQuarters").value || 0,
+    holdMonths: +document.getElementById("holdMonths").value || 0,
     completionYear: +document.getElementById("completionYear").value || new Date().getFullYear(),
     completionQuarter: +document.getElementById("completionQuarter").value || 1,
     purchaseYear: +document.getElementById("purchaseYear").value || new Date().getFullYear(),
@@ -3498,7 +3583,8 @@ function render() {
   const quarter = inp.completionQuarter || 1;
   const purchaseQ = purchaseYear * 4 + (purchaseQuarter - 1);
   const handoverQ = completionYear * 4 + (quarter - 1);
-  const totalHoldQuarters = Math.max(1, inp.holdYears * 4 + (inp.holdQuarters || 0));
+  const totalHoldMonths = Math.max(1, inp.holdYears * 12 + (inp.holdMonths || 0));
+  const totalHoldQuarters = Math.ceil(totalHoldMonths / 3);
   const anchorQRender = (VF.holdMode === "operating") ? handoverQ : purchaseQ;
   const saleQ = anchorQRender + totalHoldQuarters - 1;
   const numRows = Math.ceil(totalHoldQuarters / 4);
