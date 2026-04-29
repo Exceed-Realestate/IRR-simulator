@@ -991,7 +991,12 @@
     body.print-sim-only .sim-title-bar h2 { font-size: 16px !important; margin: 0 !important; }
     body.print-sim-only .sim-title-bar .kicker { font-size: 9px !important; }
     body.print-sim-only .sim-title-bar .subtitle { font-size: 10px !important; }
-    body.print-sim-only .sim-title-bar .nav-brochure-btn { display: none !important; }
+    body.print-sim-only .sim-title-bar .nav-brochure-btn,
+    body.print-sim-only #versionSelector,
+    body.print-sim-only #modeToggle { display: none !important; }
+    body.print-sim-only .timeline-chart { page-break-inside: avoid; }
+    body.print-sim-only #holdBreakdown { page-break-inside: avoid; }
+    body.print-sim-only #irrBreakdownModal { display: none !important; }
 
     /* SINGLE COLUMN flow — packed tight to fit landscape A4 in 2 pages */
     body.print-sim-only .simulator-container {
@@ -1314,6 +1319,9 @@
         </select>
         <button class="nav-brochure-btn" style="background:var(--accent);color:var(--primary);margin:0;" onclick="openBrochureModal()">
           <span class="ja">物件資料を開く</span><span class="en">Open Brochures</span>
+        </button>
+        <button class="nav-brochure-btn" style="background:var(--primary);color:#fff;margin:0;" onclick="generateReport()">
+          📄 <span class="ja">レポート生成</span><span class="en">Generate Report</span>
         </button>
       </div>
     </div>
@@ -2166,6 +2174,14 @@ window.addEventListener("afterprint", () => {
 // =========== PRINT / PDF (Simulator only — native preview, LANDSCAPE) ===========
 // Click → browser opens print preview showing only the simulator → user
 // chooses "Save as PDF" or prints. Injects a landscape @page rule at runtime.
+// Wrapper exposed via the prominent "Generate Report" button. Closes any
+// open modal first, then triggers the print-to-PDF flow.
+function generateReport() {
+  if (typeof closeIrrBreakdown === "function") closeIrrBreakdown();
+  if (typeof closeCustomPropertyModal === "function") closeCustomPropertyModal();
+  downloadSimulatorPDF();
+}
+
 function downloadSimulatorPDF() {
   // Close any open modal/demo first
   if (typeof closeBrochureModal === "function") closeBrochureModal();
