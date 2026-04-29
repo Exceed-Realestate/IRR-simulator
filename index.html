@@ -447,8 +447,9 @@
   }
   .timeline-chart .tl-row {
     display: grid; grid-template-columns: 100px 1fr; gap: 10px;
-    align-items: center; margin-bottom: 4px;
+    align-items: center; margin-bottom: 18px;
   }
+  .timeline-chart .tl-row.tl-header { margin-bottom: 6px; }
   .timeline-chart .tl-header { border-bottom: 1px dashed var(--border); padding-bottom: 4px; margin-bottom: 6px; }
   .timeline-chart .tl-row-label { font-size: 12px; line-height: 1.2; }
   .timeline-chart .tl-row-label strong { color: var(--primary); font-size: 13px; }
@@ -1429,7 +1430,7 @@
           </div>
           <div class="field-row">
             <div class="field"><label>LTV (%)</label><input type="number" id="ltv" value="50" min="0" max="80" step="5"></div>
-            <div class="field"><label><span class="ja">金利 (%)</span><span class="en">Rate (%)</span></label><input type="number" id="mortgageRate" value="6.5" step="0.1"></div>
+            <div class="field"><label><span class="ja">金利 (%)</span><span class="en">Rate (%)</span></label><input type="number" id="mortgageRate" value="6" step="0.1"></div>
           </div>
           <div class="field">
             <label><span class="ja">ローン期間（年）</span><span class="en">Term (yrs)</span></label>
@@ -1445,7 +1446,7 @@
           </div>
           <div class="field-row">
             <div class="field"><label><span class="ja">空室率 (%)</span><span class="en">Vacancy (%)</span></label><input type="number" id="vacancy" value="10" min="0" max="50" step="1"></div>
-            <div class="field"><label><span class="ja">PM費 (%)</span><span class="en">PM fee (%)</span></label><input type="number" id="pmFee" value="6" min="0" max="15" step="0.5"></div>
+            <div class="field"><label><span class="ja">PM費 (%)</span><span class="en">PM fee (%)</span></label><input type="number" id="pmFee" value="5" min="0" max="15" step="0.5"></div>
           </div>
           <div class="field">
             <label><span class="ja">家具家電費用（AED）</span><span class="en">Furniture (AED)</span></label>
@@ -3414,7 +3415,7 @@ function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, pu
       <span><span class="tl-legend-dot" style="background:#94a3b8"></span><span class="ja">建設中</span><span class="en">Construction</span></span>
       <span><span class="tl-legend-dot" style="background:var(--s2)"></span><span class="ja">運用中</span><span class="en">Operating</span></span>
       <span><span class="tl-legend-dot" style="background:repeating-linear-gradient(45deg,#fde68a,#fde68a 5px,#fef3c7 5px,#fef3c7 10px)"></span><span class="ja">空室期間（賃貸契約外）</span><span class="en">Vacant (no lease)</span></span>
-      <span><span class="tl-legend-dot" style="border:2px solid #ef4444; background:transparent;"></span><span class="ja">1年単位</span><span class="en">1-year unit</span></span>
+      <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:24px;height:0;border-top:1.8px solid #ef4444;position:relative;"><span style="position:absolute;left:-1px;top:-3px;width:0;height:0;border-right:5px solid #ef4444;border-top:3px solid transparent;border-bottom:3px solid transparent;"></span><span style="position:absolute;right:-1px;top:-3px;width:0;height:0;border-left:5px solid #ef4444;border-top:3px solid transparent;border-bottom:3px solid transparent;"></span></span><span class="ja">1年単位</span><span class="en">1-year unit</span></span>
     </div>
   `;
 
@@ -3422,72 +3423,53 @@ function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, pu
   requestAnimationFrame(() => drawYearOutlines(el, purchaseQuarter || 1, totalHoldQuarters));
 }
 
-// Red outline overlays grouping every 4 cells (= 1 holding year) starting from purchase Q.
-// May span 2 calendar-year rows; we draw 2 separate boxes that together represent the same year.
+// Horizontal arrow lines (←──Y1──→) marking each 1-year holding partition,
+// anchored to purchase quarter. Spans 2 calendar rows when needed.
 function drawYearOutlines(chartEl, purchaseQuarter, totalHoldQuarters) {
   if (!chartEl) return;
-  // Clean up previous overlays
-  chartEl.querySelectorAll(".tl-year-overlay").forEach(n => n.remove());
+  chartEl.querySelectorAll(".tl-year-overlay, .tl-year-arrow").forEach(n => n.remove());
   chartEl.style.position = "relative";
   const chartRect = chartEl.getBoundingClientRect();
   const rows = Array.from(chartEl.querySelectorAll(".tl-row:not(.tl-header)"));
   if (rows.length === 0) return;
 
-  // Cell index (0-based) where holding starts in the first calendar-year row
   const startOffset = (purchaseQuarter - 1);
   const total = totalHoldQuarters || (rows.length * 4);
   const numFullYears = Math.floor(total / 4);
-  const remainder = total % 4;  // partial last year
 
-  const drawBox = (rowIdx, fromCol, toCol) => {
+  const drawArrow = (rowIdx, fromCol, toCol, label, dashed) => {
     const cells = rows[rowIdx]?.querySelectorAll(".tl-q");
     if (!cells || !cells[fromCol] || !cells[toCol]) return;
     const r1 = cells[fromCol].getBoundingClientRect();
     const r2 = cells[toCol].getBoundingClientRect();
-    const overlay = document.createElement("div");
-    overlay.className = "tl-year-overlay";
-    overlay.style.cssText = `position:absolute; left:${r1.left - chartRect.left - 2}px; top:${r1.top - chartRect.top - 2}px; width:${r2.right - r1.left + 4}px; height:${r1.height + 4}px; border:2px solid #ef4444; border-radius:5px; pointer-events:none; box-sizing:border-box;`;
-    chartEl.appendChild(overlay);
+    const left = r1.left - chartRect.left;
+    const top = r1.bottom - chartRect.top + 6;  // 6px below cell bottom
+    const width = r2.right - r1.left;
+    const arrow = document.createElement("div");
+    arrow.className = "tl-year-arrow";
+    arrow.style.cssText = `position:absolute; left:${left}px; top:${top}px; width:${width}px; height:0; pointer-events:none;`;
+    arrow.innerHTML = `
+      <div style="position:absolute; left:6px; right:6px; top:0; border-top:${dashed ? '1.5px dashed' : '1.8px solid'} #ef4444;"></div>
+      <div style="position:absolute; left:0; top:-4px; width:0; height:0; border-right:6px solid #ef4444; border-top:4px solid transparent; border-bottom:4px solid transparent;"></div>
+      <div style="position:absolute; right:0; top:-4px; width:0; height:0; border-left:6px solid #ef4444; border-top:4px solid transparent; border-bottom:4px solid transparent;"></div>
+      ${label ? `<div style="position:absolute; left:50%; top:-9px; transform:translateX(-50%); font-size:9px; color:#ef4444; font-weight:700; background:#fafbfc; padding:0 4px; line-height:1;">${label}</div>` : ''}
+    `;
+    chartEl.appendChild(arrow);
   };
 
-  // For each full holding year, compute its cells and draw outline(s)
   for (let y = 0; y < numFullYears; y++) {
-    const startAbs = startOffset + y * 4;          // absolute cell index across all rows (from row 0 col 0)
-    const endAbs = startAbs + 3;                    // last cell of this year
+    const startAbs = startOffset + y * 4;
+    const endAbs = startAbs + 3;
     const startRow = Math.floor(startAbs / 4);
     const startCol = startAbs % 4;
     const endRow = Math.floor(endAbs / 4);
     const endCol = endAbs % 4;
     if (startRow >= rows.length) break;
     if (startRow === endRow) {
-      drawBox(startRow, startCol, endCol);
+      drawArrow(startRow, startCol, endCol, `Year ${y+1}`, false);
     } else {
-      drawBox(startRow, startCol, 3);             // first row tail
-      if (endRow < rows.length) drawBox(endRow, 0, endCol);  // next row head
-    }
-  }
-
-  // Partial last year (if any) — draw with dashed style
-  if (remainder > 0) {
-    const startAbs = startOffset + numFullYears * 4;
-    const endAbs = startAbs + remainder - 1;
-    const startRow = Math.floor(startAbs / 4);
-    const startCol = startAbs % 4;
-    const endRow = Math.floor(endAbs / 4);
-    const endCol = endAbs % 4;
-    const drawDashed = (rowIdx, fromCol, toCol) => {
-      const cells = rows[rowIdx]?.querySelectorAll(".tl-q");
-      if (!cells || !cells[fromCol] || !cells[toCol]) return;
-      const r1 = cells[fromCol].getBoundingClientRect();
-      const r2 = cells[toCol].getBoundingClientRect();
-      const overlay = document.createElement("div");
-      overlay.className = "tl-year-overlay";
-      overlay.style.cssText = `position:absolute; left:${r1.left - chartRect.left - 2}px; top:${r1.top - chartRect.top - 2}px; width:${r2.right - r1.left + 4}px; height:${r1.height + 4}px; border:2px dashed #ef4444; border-radius:5px; pointer-events:none; box-sizing:border-box;`;
-      chartEl.appendChild(overlay);
-    };
-    if (startRow < rows.length) {
-      if (startRow === endRow) drawDashed(startRow, startCol, endCol);
-      else { drawDashed(startRow, startCol, 3); if (endRow < rows.length) drawDashed(endRow, 0, endCol); }
+      drawArrow(startRow, startCol, 3, `Year ${y+1}`, false);
+      if (endRow < rows.length) drawArrow(endRow, 0, endCol, '', false);
     }
   }
 }
