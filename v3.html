@@ -1481,6 +1481,8 @@
                 <option value="3">Q4</option>
               </select>
             </div>
+            <!-- Auto-calculated breakdown: construction / operating / vacant -->
+            <div id="holdBreakdown" style="margin-top:8px;"></div>
           </div>
         </div>
 
@@ -3068,13 +3070,20 @@ function render() {
   }
   document.getElementById("cashflowTable").innerHTML = rows.join("");
 
-  // Calendar timeline chart (style A: per-year horizontal bars on shared axis)
+  // Calendar timeline chart (year × quarter grid)
   drawTimelineChart({
     purchaseQ: anchorQRender,
     handoverQ,
     saleQ,
     holdYears: numRows,
     dubaiOn, dubaiMode
+  });
+
+  // Auto breakdown: construction / operating (full leases) / vacant (residual)
+  drawHoldBreakdown({
+    purchaseQ: anchorQRender,
+    handoverQ,
+    saleQ,
   });
 
   const exitRows = [
@@ -3162,6 +3171,65 @@ function drawCumulativeChart(cashflows) {
       scales: { y: { title: { display: true, text: lbl }, ticks: { callback: v => fmt(v) } } }
     }
   });
+}
+
+// =========== HOLDING PERIOD BREAKDOWN (auto: construction/operating/vacant) ===========
+function drawHoldBreakdown({ purchaseQ, handoverQ, saleQ }) {
+  const el = document.getElementById("holdBreakdown");
+  if (!el) return;
+  if (saleQ < purchaseQ) { el.innerHTML = ""; return; }
+
+  const constructionQ = Math.max(0, Math.min(handoverQ, saleQ + 1) - purchaseQ);
+  const operatingQ = Math.max(0, saleQ - Math.max(handoverQ, purchaseQ) + 1);
+  const numLeases = Math.floor(operatingQ / 4);
+  const leasedQ = numLeases * 4;
+  const vacantQ = operatingQ - leasedQ;
+
+  const fmtDur = (q) => {
+    if (q === 0) return "—";
+    if (q < 4) return `${q * 3}ヶ月`;
+    const y = Math.floor(q / 4);
+    const r = q % 4;
+    return r === 0 ? `${y}年` : `${y}年${r * 3}ヶ月`;
+  };
+  const fmtDurEn = (q) => {
+    if (q === 0) return "—";
+    if (q < 4) return `${q * 3}mo`;
+    const y = Math.floor(q / 4);
+    const r = q % 4;
+    return r === 0 ? `${y}y` : `${y}y ${r * 3}mo`;
+  };
+
+  const segs = [];
+  if (constructionQ > 0) {
+    segs.push(`<span style="display:inline-flex;align-items:center;gap:4px;">
+      <span style="display:inline-block;width:10px;height:10px;background:#94a3b8;border-radius:2px;"></span>
+      <span class="ja">建設中: <strong>${fmtDur(constructionQ)}</strong></span>
+      <span class="en">Construction: <strong>${fmtDurEn(constructionQ)}</strong></span>
+    </span>`);
+  }
+  if (leasedQ > 0) {
+    segs.push(`<span style="display:inline-flex;align-items:center;gap:4px;">
+      <span style="display:inline-block;width:10px;height:10px;background:var(--s2);border-radius:2px;"></span>
+      <span class="ja">運用中: <strong>${fmtDur(leasedQ)}</strong> <small>(${numLeases}件の1年契約)</small></span>
+      <span class="en">Operating: <strong>${fmtDurEn(leasedQ)}</strong> <small>(${numLeases} × 1-yr lease)</small></span>
+    </span>`);
+  }
+  if (vacantQ > 0) {
+    segs.push(`<span style="display:inline-flex;align-items:center;gap:4px;">
+      <span style="display:inline-block;width:10px;height:10px;background:repeating-linear-gradient(45deg,#fde68a,#fde68a 3px,#fef3c7 3px,#fef3c7 6px);border-radius:2px;"></span>
+      <span class="ja">空室期間: <strong>${vacantQ * 3}ヶ月</strong> <small>(賃貸契約外)</small></span>
+      <span class="en">Vacant: <strong>${vacantQ * 3}mo</strong> <small>(no lease possible)</small></span>
+    </span>`);
+  }
+
+  el.innerHTML = `
+    <div style="display:flex; gap:16px; flex-wrap:wrap; padding:8px 12px;
+      background:#f8fafc; border:1px solid var(--border); border-radius:6px;
+      font-size:11px; color:var(--text);">
+      ${segs.join('')}
+    </div>
+  `;
 }
 
 // =========== TIMELINE CHART (year × quarter grid) ===========
