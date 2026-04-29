@@ -2451,9 +2451,12 @@ function calculate(inp) {
     const totalQuarters = holdYrsTotal * 4;
     const saleQabs = purchaseQabs + totalQuarters - 1;
     const saleYrLocal = Math.floor(saleQabs / 4);
+    // cf array buckets by YEAR-FROM-PURCHASE (4-quarter rolling windows
+    // anchored to purchase quarter), so cf length === holdYears.
     const cf = [-initialCashAED];
-    for (let cy = purchaseYr; cy <= saleYrLocal; cy++) {
-      const yStart = cy * 4, yEnd = yStart + 3;
+    for (let yi = 0; yi < holdYrsTotal; yi++) {
+      const yStart = purchaseQabs + yi * 4;
+      const yEnd = yStart + 3;
       const overlap = Math.max(0, Math.min(yEnd, saleQabs) - Math.max(yStart, handoverQabs) + 1);
       cf.push((overlap / 4) * annualNetCF);
     }
@@ -2764,9 +2767,9 @@ function render() {
     `<tr><td>${label}</td><td class="num">${fmt(val)}</td><td class="num">${fmt(val * fx)}</td><td style="font-size:11px;color:var(--text-muted)">${note}</td></tr>`
   ).join("") + `<tr class="total"><td>${L("initialTotal")}</td><td class="num">${fmt(r.initialCashAED)}</td><td class="num">${fmt(r.initialCashAED * fx)}</td><td></td></tr>`;
 
-  // Cash flow table: construction row + rolling 12-month operating rows.
-  // holdYears = TOTAL from purchase, so operating period = holdYears - constructionYears.
-  // Last operating row may be partial (fraction < 1) when operating years aren't integer.
+  // CF table: ONE row per year-from-purchase (rolling 12-month from purchase quarter).
+  // 1年目 = first 12 months from purchase (may be all construction).
+  // Status tag indicates 建設中 / Q取得 (partial) / full operating.
   const rows = [];
   const purchaseYear = inp.purchaseYear || new Date().getFullYear();
   const purchaseQuarter = inp.purchaseQuarter || 1;
@@ -2779,55 +2782,47 @@ function render() {
   const ORDINALS_EN = ["First","Second","Third","Fourth","Fifth","Sixth","Seventh","Eighth","Ninth","Tenth"];
   const ordEnLabel = (n) => ORDINALS_EN[n] ? `${ORDINALS_EN[n]} Year` : `Year ${n + 1}`;
 
-  // Build row list
-  const rowList = [];
-  if (handoverQ > purchaseQ) {
-    const cEnd = Math.min(handoverQ - 1, saleQ);
-    rowList.push({ type: "construction", start: purchaseQ, end: cEnd });
-  }
-  let opStart = Math.max(handoverQ, purchaseQ);
-  let yi = 0;
-  while (opStart <= saleQ) {
-    const yEnd = Math.min(opStart + 3, saleQ);
-    const f = (yEnd - opStart + 1) / 4;
-    rowList.push({ type: "operating", yearN: yi + 1, start: opStart, end: yEnd, fraction: f });
-    opStart += 4;
-    yi++;
-  }
-  if (rowList.length > 0) rowList[rowList.length - 1].withSale = true;
+  for (let yi = 0; yi < inp.holdYears; yi++) {
+    const yearStartQ = purchaseQ + yi * 4;
+    const yearEndQ = yearStartQ + 3;
+    const isLast = (yi === inp.holdYears - 1);
+    const opStart = Math.max(yearStartQ, handoverQ);
+    const opEnd = Math.min(yearEndQ, saleQ);
+    const opQuarters = Math.max(0, opEnd - opStart + 1);
+    const f = opQuarters / 4;
+    const isFullConstruction = (f === 0);
 
-  // Render
-  rowList.forEach(row => {
-    const saleJa = row.withSale ? ` <small style="color:var(--accent-dark);font-weight:600">＋売却</small>` : '';
-    const saleEn = row.withSale ? ` <small style="color:var(--accent-dark);font-weight:600">+ Sale</small>` : '';
-    if (row.type === "construction") {
-      rows.push(`<tr style="background:#f9fafb;color:#94a3b8">
-        <td>
-          <span class="ja"><strong>建設中</strong></span><span class="en"><strong>Under Construction</strong></span>
-          <small style="font-style:italic"> ${qStr(row.start)} → ${qStr(row.end)}</small>
-          <span class="ja">${saleJa}</span><span class="en">${saleEn}</span>
-        </td>
-        <td class="num">—</td><td class="num">—</td><td class="num">—</td>
-        <td class="num">—</td><td class="num">—</td><td class="num">—</td>
-      </tr>`);
-    } else {
-      const f = row.fraction;
-      const partial = (f < 1) ? ` <small style="color:#94a3b8">(${(f*100).toFixed(0)}%)</small>` : '';
-      const netCF = r.annualNetCF * f;
-      rows.push(`<tr><td>
-        <span class="ja"><strong>${row.yearN}年目</strong></span><span class="en"><strong>${ordEnLabel(row.yearN - 1)}</strong></span>
-        <small style="color:#94a3b8;font-style:italic"> ${qStr(row.start)} → ${qStr(row.end)}</small>${partial}
-        <span class="ja">${saleJa}</span><span class="en">${saleEn}</span>
-        </td>
-        <td class="num">${fmt(r.grossRent * f)}</td>
-        <td class="num" style="color:var(--negative)">${fmt(-r.vacancyLoss * f)}</td>
-        <td class="num" style="color:var(--negative)">${fmt(-r.pmFee * f)}</td>
-        <td class="num" style="color:var(--negative)">${fmt(-r.serviceCharge * f)}</td>
-        <td class="num" style="color:var(--negative)">${fmt(-r.annualLoanPayment * f)}</td>
-        <td class="num" style="font-weight:600;color:${netCF>=0?'var(--positive)':'var(--negative)'}">${fmt(netCF)}</td>
-      </tr>`);
+    let statusJa = '', statusEn = '';
+    if (isFullConstruction) {
+      statusJa = `<small style="font-style:italic">建設中</small>`;
+      statusEn = `<small style="font-style:italic">Under Construction</small>`;
+    } else if (f < 1) {
+      const handoverCalQ = (handoverQ % 4) + 1;
+      statusJa = `<small style="color:#94a3b8;font-style:italic">Q${handoverCalQ}取得 (${(f*100).toFixed(0)}%)</small>`;
+      statusEn = `<small style="color:#94a3b8;font-style:italic">Q${handoverCalQ} handover (${(f*100).toFixed(0)}%)</small>`;
     }
-  });
+    const saleJa = isLast ? ` <small style="color:var(--accent-dark);font-weight:600">＋売却</small>` : '';
+    const saleEn = isLast ? ` <small style="color:var(--accent-dark);font-weight:600">+ Sale</small>` : '';
+    const rowStyle = isFullConstruction ? 'background:#f9fafb;color:#94a3b8' : '';
+
+    const cells = isFullConstruction
+      ? `<td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>`
+      : `<td class="num">${fmt(r.grossRent * f)}</td>
+         <td class="num" style="color:var(--negative)">${fmt(-r.vacancyLoss * f)}</td>
+         <td class="num" style="color:var(--negative)">${fmt(-r.pmFee * f)}</td>
+         <td class="num" style="color:var(--negative)">${fmt(-r.serviceCharge * f)}</td>
+         <td class="num" style="color:var(--negative)">${fmt(-r.annualLoanPayment * f)}</td>
+         <td class="num" style="font-weight:600;color:${(r.annualNetCF*f)>=0?'var(--positive)':'var(--negative)'}">${fmt(r.annualNetCF * f)}</td>`;
+
+    rows.push(`<tr style="${rowStyle}">
+      <td>
+        <span class="ja"><strong>${yi + 1}年目</strong></span><span class="en"><strong>${ordEnLabel(yi)}</strong></span>
+        <small style="color:#94a3b8;font-style:italic"> ${qStr(yearStartQ)} → ${qStr(yearEndQ)}</small>
+        <span class="ja"> ${statusJa}${saleJa}</span><span class="en"> ${statusEn}${saleEn}</span>
+      </td>
+      ${cells}
+    </tr>`);
+  }
   document.getElementById("cashflowTable").innerHTML = rows.join("");
 
   const exitRows = [
