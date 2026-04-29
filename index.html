@@ -1393,8 +1393,8 @@
           </div>
           <div class="field">
             <label>
-              <span class="ja">保有期間（年）<small>※購入から売却までの総年数（建設期間含む）</small></span>
-              <span class="en">Holding period (years) <small>total from purchase, incl. construction</small></span>
+              <span class="ja">保有期間（年）<small>※引渡後の運用年数（建設期間は含まない）</small></span>
+              <span class="en">Holding period (years) <small>operating years post-handover</small></span>
             </label>
             <input type="number" id="holdYears" value="5" min="1" max="20" step="1">
           </div>
@@ -2406,19 +2406,32 @@ function calculate(inp) {
   const currentYear = new Date().getFullYear();
   const constructionYears = Math.max(0, (inp.completionYear || currentYear) - currentYear);
 
-  // appr is CUMULATIVE appreciation % over the hold period (not annual compound)
-  // For MAIN scenario: holdYears = OPERATING years (post-completion)
+  // Quarter-aware operating windows.
+  // holdYears = OPERATING years from handover (rolling 12-month windows).
+  // Q4 2027 + 5y → operates Q4 2027 to Q3 2032 inclusive.
+  // Calendar-year fractions used so partial calendar years (completion year
+  // and final year) get proportional CF.
+  const completionYrLocal = inp.completionYear || currentYear;
+  const completionQ_local = inp.completionQuarter || 1;
+  const handoverQabs = completionYrLocal * 4 + (completionQ_local - 1);
+  const purchaseYr = currentYear;
+
   function scenOperating(operatingYears, apprCumulativePct) {
+    const opQuarters = operatingYears * 4;
+    const saleQabs = handoverQabs + opQuarters - 1;
+    const saleYrLocal = Math.floor(saleQabs / 4);
     const cf = [-initialCashAED];
-    for (let y = 0; y < constructionYears; y++) cf.push(0);
-    for (let y = 0; y < operatingYears; y++) cf.push(annualNetCF);
+    for (let cy = purchaseYr; cy <= saleYrLocal; cy++) {
+      const yStart = cy * 4, yEnd = yStart + 3;
+      const overlap = Math.max(0, Math.min(yEnd, saleQabs) - Math.max(yStart, handoverQabs) + 1);
+      cf.push((overlap / 4) * annualNetCF);
+    }
     const salePrice = p * (1 + apprCumulativePct/100);
     const saleAgentFee = salePrice * 0.021;
     const saleNOC = 5000;
-    const totalYearsHeld = constructionYears + operatingYears;
     let remainingLoan = loanAmount;
     if (inp.useMortgage && loanAmount > 0) {
-      const r = inp.mortgageRate/100/12, n = inp.mortgageTerm*12, k = totalYearsHeld*12;
+      const r = inp.mortgageRate/100/12, n = inp.mortgageTerm*12, k = operatingYears*12;
       if (r > 0) remainingLoan = loanAmount * (Math.pow(1+r,n) - Math.pow(1+r,k)) / (Math.pow(1+r,n) - 1);
       else remainingLoan = loanAmount * (1 - k/n);
       if (remainingLoan < 0) remainingLoan = 0;
@@ -2426,22 +2439,17 @@ function calculate(inp) {
     const net = salePrice - saleAgentFee - saleNOC - remainingLoan;
     if (cf.length > 1) cf[cf.length-1] += net;
     else cf.push(net);
-    return { cf, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net, operatingYears, constructionYears };
+    return { cf, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net, operatingYears, saleYr: saleYrLocal };
   }
 
-  // For SCENARIOS: total years from purchase. Operating = total - construction.
-  // Completion year gets partial CF based on quarter:
-  // Q1=full year, Q2=3/4, Q3=1/2, Q4=1/4
-  const completionFraction = (5 - (inp.completionQuarter || 1)) / 4;
+  // For OFF-PLAN FLIP scenarios (s1): totalYears = total years from purchase,
+  // pre-handover assignment sale, NO operating CF.
   function scenTotal(totalYears, apprCumulativePct) {
     const operatingYears = Math.max(0, totalYears - constructionYears);
     const cYears = Math.min(constructionYears, totalYears);
     const cf = [-initialCashAED];
     for (let y = 0; y < cYears; y++) cf.push(0);
-    for (let y = 0; y < operatingYears; y++) {
-      const fraction = (y === 0) ? completionFraction : 1;
-      cf.push(fraction * annualNetCF);
-    }
+    for (let y = 0; y < operatingYears; y++) cf.push(annualNetCF);
     const salePrice = p * (1 + apprCumulativePct/100);
     const saleAgentFee = salePrice * 0.021;
     const saleNOC = 5000;
@@ -2458,20 +2466,19 @@ function calculate(inp) {
     return { cf, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net, operatingYears, cYears };
   }
 
-  // holdYears = TOTAL years from purchase (construction + operating).
-  // Operating years = max(0, holdYears - constructionYears).
-  const totalYearsHeld = inp.holdYears;
+  const totalYearsHeld = inp.holdYears;  // operating years post-handover
   const effectiveCumulativePct = inp.appreciationMode === "annual"
     ? (Math.pow(1 + inp.appreciation/100, totalYearsHeld) - 1) * 100
     : inp.appreciation;
-  const main = scenTotal(inp.holdYears, effectiveCumulativePct);
+  const main = scenOperating(inp.holdYears, effectiveCumulativePct);
   const mainIrr = irr(main.cf);
   const multiple = main.cf.slice(1).reduce((a,b) => a+b, 0) / initialCashAED;
-  // Fixed cumulative appreciation per scenario (matches strategy paper midpoints)
-  const s1 = scenTotal(2, 25);  // ① Off-plan resale: ~+25% cumulative (paper 20-30%)
-  const s2 = scenTotal(4, 32);  // ② Post-handover short: ~+32% (paper 25-40%)
-  const s3 = scenTotal(7, 40);  // ③ Long-term hold:   ~+40% (paper 30-50%)
-  const s4 = scenTotal(inp.s4Years || 5, inp.s4Appr || 35);  // ④ Custom (user-defined)
+  // Fixed scenarios. s1 = off-plan flip (pre-handover assignment, totalYears
+  // semantic). s2/s3/s4 = post-handover holds (operatingYears semantic).
+  const s1 = scenTotal(2, 25);              // ① Off-plan resale: 2 yrs, ~+25% cum
+  const s2 = scenOperating(4, 32);          // ② Post-handover 4 op-years, ~+32%
+  const s3 = scenOperating(7, 40);          // ③ Long-term hold 7 op-years, ~+40%
+  const s4 = scenOperating(inp.s4Years || 5, inp.s4Appr || 35);  // ④ Custom
 
   return {
     cashDown, loanAmount, dld, trustee, titleDeed, oqood, noc, agentFee, mortgageReg, brokerFee,
@@ -2726,24 +2733,30 @@ function render() {
   const rows = [];
   const purchaseYear = new Date().getFullYear();
   const completionYear = inp.completionYear || purchaseYear;
-  const cYears = Math.max(0, completionYear - purchaseYear);
   const quarter = inp.completionQuarter || 1;
-  const cFrac = (5 - quarter) / 4;
-  for (let y = 0; y < inp.holdYears; y++) {
-    const calendarYear = purchaseYear + y;
-    const underConstruction = y < cYears;
-    if (underConstruction) {
+  const handoverQ = completionYear * 4 + (quarter - 1);
+  const saleQ = handoverQ + (inp.holdYears * 4) - 1;
+  const saleYear = Math.floor(saleQ / 4);
+  const saleQuarter = (saleQ % 4) + 1;
+  for (let cy = purchaseYear; cy <= saleYear; cy++) {
+    const yStart = cy * 4, yEnd = yStart + 3;
+    const overlap = Math.max(0, Math.min(yEnd, saleQ) - Math.max(yStart, handoverQ) + 1);
+    const f = overlap / 4;
+    if (f === 0) {
       rows.push(`<tr style="background:#f9fafb;color:#94a3b8">
-        <td>${calendarYear} <small style="font-style:italic">建設中</small></td>
+        <td>${cy} <small style="font-style:italic">建設中</small></td>
         <td class="num">—</td><td class="num">—</td><td class="num">—</td>
         <td class="num">—</td><td class="num">—</td><td class="num">—</td>
       </tr>`);
     } else {
-      const isCompletion = (y === cYears);
-      const f = isCompletion ? cFrac : 1;
-      const note = isCompletion ? ` <small style="color:#94a3b8;font-style:italic">Q${quarter}取得 (${(f*100).toFixed(0)}%)</small>` : '';
+      let note = '';
+      if (cy === completionYear && quarter > 1) {
+        note = ` <small style="color:#94a3b8;font-style:italic">Q${quarter}取得 (${(f*100).toFixed(0)}%)</small>`;
+      } else if (cy === saleYear && saleQuarter < 4) {
+        note = ` <small style="color:#94a3b8;font-style:italic">Q${saleQuarter}まで売却 (${(f*100).toFixed(0)}%)</small>`;
+      }
       const netCF = r.annualNetCF * f;
-      rows.push(`<tr><td>${calendarYear}${note}</td>
+      rows.push(`<tr><td>${cy}${note}</td>
         <td class="num">${fmt(r.grossRent * f)}</td>
         <td class="num" style="color:var(--negative)">${fmt(-r.vacancyLoss * f)}</td>
         <td class="num" style="color:var(--negative)">${fmt(-r.pmFee * f)}</td>
