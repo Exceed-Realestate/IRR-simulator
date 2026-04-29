@@ -3949,7 +3949,7 @@ function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, pu
       <span><span class="tl-legend-dot" style="background:#94a3b8"></span><span class="ja">建設中</span><span class="en">Construction</span></span>
       <span><span class="tl-legend-dot" style="background:var(--s2)"></span><span class="ja">運用中</span><span class="en">Operating</span></span>
       <span><span class="tl-legend-dot" style="background:repeating-linear-gradient(45deg,#fde68a,#fde68a 5px,#fef3c7 5px,#fef3c7 10px)"></span><span class="ja">空室期間（賃貸契約外）</span><span class="en">Vacant (no lease)</span></span>
-      <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:24px;height:0;border-top:1.8px solid #ef4444;position:relative;"><span style="position:absolute;left:-1px;top:-3px;width:0;height:0;border-right:5px solid #ef4444;border-top:3px solid transparent;border-bottom:3px solid transparent;"></span><span style="position:absolute;right:-1px;top:-3px;width:0;height:0;border-left:5px solid #ef4444;border-top:3px solid transparent;border-bottom:3px solid transparent;"></span></span><span class="ja">1年単位</span><span class="en">1-year unit</span></span>
+      <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:24px;height:0;border-top:2px dotted #ef4444;position:relative;"><span style="position:absolute;left:-1px;top:-3px;width:0;height:0;border-right:5px solid #ef4444;border-top:3px solid transparent;border-bottom:3px solid transparent;"></span><span style="position:absolute;right:-1px;top:-3px;width:0;height:0;border-left:5px solid #ef4444;border-top:3px solid transparent;border-bottom:3px solid transparent;"></span></span><span class="ja">1年単位</span><span class="en">1-year unit</span></span>
     </div>
   `;
 
@@ -3983,7 +3983,7 @@ function drawYearOutlines(chartEl, purchaseQuarter, totalHoldQuarters) {
     arrow.className = "tl-year-arrow";
     arrow.style.cssText = `position:absolute; left:${left}px; top:${top}px; width:${width}px; height:0; pointer-events:none; z-index:10;`;
     arrow.innerHTML = `
-      <div style="position:absolute; left:8px; right:8px; top:0; border-top:${dashed ? '2px dashed' : '2.5px solid'} #ef4444;"></div>
+      <div style="position:absolute; left:8px; right:8px; top:0; border-top:2.5px dotted #ef4444;"></div>
       <div style="position:absolute; left:0; top:-6px; width:0; height:0; border-right:8px solid #ef4444; border-top:6px solid transparent; border-bottom:6px solid transparent;"></div>
       <div style="position:absolute; right:0; top:-6px; width:0; height:0; border-left:8px solid #ef4444; border-top:6px solid transparent; border-bottom:6px solid transparent;"></div>
       ${label ? `<div style="position:absolute; left:50%; top:-13px; transform:translateX(-50%); font-size:10px; color:#ef4444; font-weight:700; background:#fff; padding:1px 6px; line-height:1.1; border:1px solid #ef4444; border-radius:3px; white-space:nowrap;">${label}</div>` : ''}
