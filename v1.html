@@ -3268,20 +3268,23 @@ function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, du
     const cells = [];
     for (let q = 0; q < 4; q++) {
       const qAbs = yr * 4 + q;
-      let cls = 'non-owned', label = '';
+      let cls = 'non-owned', labelJa = '', labelEn = '';
       if (qAbs >= purchaseQ && qAbs <= saleQ) {
         if (qAbs < handoverQ) {
-          cls = 'construction'; label = '建設中';
+          cls = 'construction'; labelJa = '建設中'; labelEn = 'Const';
         } else if (vacantApplies && qAbs >= vacantStartQ) {
-          cls = 'vacant'; label = '空';
+          cls = 'vacant'; labelJa = '空'; labelEn = 'Vac';
         } else {
-          cls = 'operating'; label = '運用';
+          cls = 'operating'; labelJa = '運用'; labelEn = 'Lease';
         }
       }
-      cells.push(`<div class="tl-q ${cls}" title="${yr} Q${q+1}">${label}</div>`);
+      cells.push(`<div class="tl-q ${cls}" title="${yr} Q${q+1}"><span class="ja">${labelJa}</span><span class="en">${labelEn}</span></div>`);
     }
     rows.push(`<div class="tl-row">
-      <div class="tl-row-label"><strong>${idx + 1}年目</strong><br><small>${yr}</small></div>
+      <div class="tl-row-label">
+        <strong><span class="ja">${idx + 1}年目</span><span class="en">Year ${idx + 1}</span></strong><br>
+        <small>${yr}</small>
+      </div>
       <div class="tl-cells">${cells.join('')}</div>
     </div>`);
   }
