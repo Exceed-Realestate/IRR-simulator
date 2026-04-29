@@ -440,39 +440,41 @@
   .calc-btn.eq { background: var(--accent); color: var(--primary); font-weight: 700; }
   .calc-btn.eq:hover { filter: brightness(0.95); }
 
-  /* Calendar timeline chart (style A: per-year horizontal bars) */
+  /* Calendar timeline chart (year × quarter grid) */
   .timeline-chart {
     background: #fafbfc; border: 1px solid var(--border); border-radius: 8px;
     padding: 14px 16px; font-size: 12px;
   }
-  .timeline-chart .tl-axis {
-    display: grid; grid-template-columns: 70px 1fr; align-items: end;
-    margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed var(--border);
-  }
-  .timeline-chart .tl-axis-labels { display: flex; }
-  .timeline-chart .tl-axis-tick {
-    flex: 1; text-align: center; font-size: 10px; color: var(--text-muted);
-    border-left: 1px dashed #e2e8f0; padding: 2px 0;
-  }
-  .timeline-chart .tl-axis-tick:first-child { border-left: none; }
   .timeline-chart .tl-row {
-    display: grid; grid-template-columns: 70px 1fr; align-items: center;
-    margin-bottom: 4px; gap: 8px;
+    display: grid; grid-template-columns: 100px 1fr; gap: 10px;
+    align-items: center; margin-bottom: 4px;
   }
-  .timeline-chart .tl-row-label { font-weight: 600; color: var(--primary); font-size: 12px; }
-  .timeline-chart .tl-bar-track {
-    position: relative; height: 22px; background: #f1f5f9; border-radius: 4px;
+  .timeline-chart .tl-header { border-bottom: 1px dashed var(--border); padding-bottom: 4px; margin-bottom: 6px; }
+  .timeline-chart .tl-row-label { font-size: 12px; line-height: 1.2; }
+  .timeline-chart .tl-row-label strong { color: var(--primary); font-size: 13px; }
+  .timeline-chart .tl-row-label small { color: var(--text-muted); font-size: 11px; }
+  .timeline-chart .tl-cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .timeline-chart .tl-q-header {
+    text-align: center; font-size: 11px; font-weight: 700; color: var(--text-muted);
+    padding: 2px 0;
   }
-  .timeline-chart .tl-seg {
-    position: absolute; top: 0; bottom: 0; border-radius: 3px;
+  .timeline-chart .tl-q {
+    height: 30px; border-radius: 4px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 600; color: #fff; overflow: hidden;
+    font-size: 11px; font-weight: 600; color: #fff;
   }
-  .timeline-chart .tl-seg.construction { background: #94a3b8; }
-  .timeline-chart .tl-seg.operating    { background: var(--s2); }
-  .timeline-chart .tl-seg.vacant       { background: repeating-linear-gradient(45deg, #fde68a, #fde68a 4px, #fef3c7 4px, #fef3c7 8px); color: #78716c; }
+  .timeline-chart .tl-q.non-owned {
+    background: transparent; border: 1px dashed #e2e8f0; color: #cbd5e1;
+  }
+  .timeline-chart .tl-q.construction { background: #94a3b8; }
+  .timeline-chart .tl-q.operating    { background: var(--s2); }
+  .timeline-chart .tl-q.vacant {
+    background: repeating-linear-gradient(45deg, #fde68a, #fde68a 5px, #fef3c7 5px, #fef3c7 10px);
+    color: #78716c;
+  }
   .timeline-chart .tl-legend {
     margin-top: 10px; display: flex; gap: 14px; font-size: 11px; color: var(--text-muted);
+    flex-wrap: wrap;
   }
   .timeline-chart .tl-legend-dot {
     display: inline-block; width: 12px; height: 12px; border-radius: 2px;
@@ -1473,10 +1475,10 @@
             <div style="display:flex; gap:6px;">
               <input type="number" id="holdYears" value="5" min="0" max="20" step="1" style="flex:1">
               <select id="holdQuarters" style="flex:0 0 78px" title="追加の四半期 / Additional quarters">
-                <option value="0" selected>+0Q</option>
-                <option value="1">+1Q</option>
-                <option value="2">+2Q</option>
-                <option value="3">+3Q</option>
+                <option value="0" selected>Q1</option>
+                <option value="1">Q2</option>
+                <option value="2">Q3</option>
+                <option value="3">Q4</option>
               </select>
             </div>
           </div>
@@ -3119,75 +3121,63 @@ function drawCumulativeChart(cashflows) {
   });
 }
 
-// =========== TIMELINE CHART (calendar-style, per-year horizontal bars) ===========
+// =========== TIMELINE CHART (year × quarter grid) ===========
 function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, dubaiMode }) {
   const el = document.getElementById("timelineChart");
   if (!el) return;
-  const totalQuarters = saleQ - purchaseQ + 1;
-  if (totalQuarters <= 0) { el.innerHTML = ""; return; }
+  if (saleQ < purchaseQ) { el.innerHTML = ""; return; }
 
-  // Build year-axis ticks: one per calendar year touched by [purchaseQ..saleQ]
-  const startYear = Math.floor(purchaseQ / 4);
-  const endYear = Math.floor(saleQ / 4);
-  const axisTicks = [];
-  for (let y = startYear; y <= endYear; y++) {
-    axisTicks.push(`<div class="tl-axis-tick">${y}</div>`);
-  }
+  const purchaseYear = Math.floor(purchaseQ / 4);
+  const saleYear = Math.floor(saleQ / 4);
 
-  // Per-year bars: one row per holdYear. Each row's bar spans from year-start to year-end.
-  const barHTML = [];
-  for (let yi = 0; yi < holdYears; yi++) {
-    const yStart = purchaseQ + yi * 4;
-    const yEnd = Math.min(yStart + 3, saleQ);
-    // Position relative to total timeline
-    const leftPct = ((yStart - purchaseQ) / totalQuarters) * 100;
-    const widthPct = ((yEnd - yStart + 1) / totalQuarters) * 100;
-    // Within this year's bar, split into construction / operating / vacant segments
-    const segments = [];
-    // Construction part: yStart .. min(handoverQ-1, yEnd)
-    if (handoverQ > yStart) {
-      const cEnd = Math.min(handoverQ - 1, yEnd);
-      if (cEnd >= yStart) {
-        const cw = ((cEnd - yStart + 1) / (yEnd - yStart + 1)) * 100;
-        segments.push(`<div class="tl-seg construction" style="left:0%; width:${cw}%">建設</div>`);
+  // Dubai 1-year-lease rule: only complete 4-quarter blocks from handoverQ count as leased.
+  // Residual quarters AFTER the last complete lease are vacant.
+  const operatingQuartersTotal = Math.max(0, saleQ - handoverQ + 1);
+  const numFullLeases = Math.floor(operatingQuartersTotal / 4);
+  const lastLeasedQ = handoverQ + numFullLeases * 4 - 1;
+  const vacantStartQ = lastLeasedQ + 1;
+  const vacantApplies = dubaiOn && vacantStartQ <= saleQ && vacantStartQ >= handoverQ;
+
+  // Header row: Q1 Q2 Q3 Q4
+  const header = `<div class="tl-row tl-header">
+    <div class="tl-row-label"></div>
+    <div class="tl-cells">
+      <div class="tl-q-header">Q1</div>
+      <div class="tl-q-header">Q2</div>
+      <div class="tl-q-header">Q3</div>
+      <div class="tl-q-header">Q4</div>
+    </div>
+  </div>`;
+
+  // Year rows: one per calendar year
+  const rows = [];
+  for (let yr = purchaseYear, idx = 0; yr <= saleYear; yr++, idx++) {
+    const cells = [];
+    for (let q = 0; q < 4; q++) {
+      const qAbs = yr * 4 + q;
+      let cls = 'non-owned', label = '';
+      if (qAbs >= purchaseQ && qAbs <= saleQ) {
+        if (qAbs < handoverQ) {
+          cls = 'construction'; label = '建設中';
+        } else if (vacantApplies && qAbs >= vacantStartQ) {
+          cls = 'vacant'; label = '空';
+        } else {
+          cls = 'operating'; label = '運用';
+        }
       }
+      cells.push(`<div class="tl-q ${cls}" title="${yr} Q${q+1}">${label}</div>`);
     }
-    // Operating part: max(handoverQ, yStart) .. yEnd
-    const opStart = Math.max(handoverQ, yStart);
-    if (opStart <= yEnd) {
-      const opQuarters = yEnd - opStart + 1;
-      // Dubai rule: if this is the LAST row, all-operating, less than full year, mark as vacant
-      const isLast = (yi === holdYears - 1);
-      const isFullYear = (yEnd - yStart + 1 === 4);
-      const isResidualPartial = isLast && !isFullYear && (handoverQ <= yStart);
-      const offset = ((opStart - yStart) / (yEnd - yStart + 1)) * 100;
-      const w = (opQuarters / (yEnd - yStart + 1)) * 100;
-      if (dubaiOn && isResidualPartial) {
-        segments.push(`<div class="tl-seg vacant" style="left:${offset}%; width:${w}%">空</div>`);
-      } else {
-        segments.push(`<div class="tl-seg operating" style="left:${offset}%; width:${w}%">運用</div>`);
-      }
-    }
-    barHTML.push(`<div class="tl-row">
-      <div class="tl-row-label"><span class="ja">${yi + 1}年目</span><span class="en">Year ${yi + 1}</span></div>
-      <div class="tl-bar-track" style="position:relative;">
-        <div style="position:absolute; left:${leftPct}%; width:${widthPct}%; top:0; bottom:0;">
-          <div style="position:relative; width:100%; height:100%;">${segments.join('')}</div>
-        </div>
-      </div>
+    rows.push(`<div class="tl-row">
+      <div class="tl-row-label"><strong>${idx + 1}年目</strong><br><small>${yr}</small></div>
+      <div class="tl-cells">${cells.join('')}</div>
     </div>`);
   }
 
-  el.innerHTML = `
-    <div class="tl-axis">
-      <div></div>
-      <div class="tl-axis-labels">${axisTicks.join('')}</div>
-    </div>
-    ${barHTML.join('')}
+  el.innerHTML = header + rows.join('') + `
     <div class="tl-legend">
       <span><span class="tl-legend-dot" style="background:#94a3b8"></span><span class="ja">建設中</span><span class="en">Construction</span></span>
-      <span><span class="tl-legend-dot" style="background:var(--s2)"></span><span class="ja">運用</span><span class="en">Operating</span></span>
-      <span><span class="tl-legend-dot" style="background:repeating-linear-gradient(45deg,#fde68a,#fde68a 4px,#fef3c7 4px,#fef3c7 8px)"></span><span class="ja">空室期間</span><span class="en">Vacant (no lease)</span></span>
+      <span><span class="tl-legend-dot" style="background:var(--s2)"></span><span class="ja">運用中</span><span class="en">Operating</span></span>
+      <span><span class="tl-legend-dot" style="background:repeating-linear-gradient(45deg,#fde68a,#fde68a 5px,#fef3c7 5px,#fef3c7 10px)"></span><span class="ja">空室期間（賃貸契約外）</span><span class="en">Vacant (no lease)</span></span>
     </div>
   `;
 }
