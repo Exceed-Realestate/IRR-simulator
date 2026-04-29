@@ -1566,6 +1566,7 @@
             </div>
             <input type="hidden" id="appreciationMode" value="cumulative">
             <input type="number" id="appreciation" value="35" step="1">
+            <small id="apprImpliedRate" style="display:block; margin-top:4px; font-size:11px; color:var(--text-muted); font-style:italic;"></small>
           </div>
           <div class="field">
             <label>
@@ -2835,6 +2836,7 @@ function openIrrBreakdown() {
         <tr><td style="padding:3px 8px;">- 空室損 (${inp.vacancy}%)</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.vacancyLoss)}</td></tr>
         <tr><td style="padding:3px 8px;">- PM費 (${inp.pmFee}%)</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.pmFee)}</td></tr>
         <tr><td style="padding:3px 8px;">- サービスチャージ</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.serviceCharge)}</td></tr>
+        <tr><td style="padding:3px 8px;">- <span class="ja">保守・修繕費</span><span class="en">Maintenance</span> (0.2% × <span class="ja">物件価格</span><span class="en">price</span>)</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.maintenance)}</td></tr>
         ${inp.useMortgage ? `<tr><td style="padding:3px 8px;">- ローン年間返済</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.annualLoanPayment)}</td></tr>` : ''}
         <tr style="border-top:1px solid var(--border);"><td style="padding:6px 8px; font-weight:700;">年間ネットCF</td><td style="text-align:right;font-family:monospace; font-weight:700; color:${r.annualNetCF >= 0 ? 'var(--positive)' : 'var(--negative)'}">${r.annualNetCF >= 0 ? '+' : ''}${fmtN(r.annualNetCF)} AED</td></tr>
       </table>
@@ -3284,7 +3286,7 @@ function calculate(inp) {
   return {
     cashDown, loanAmount, dld, trustee, titleDeed, oqood, noc, agentFee, mortgageReg, brokerFee,
     furniture: inp.furniture, initialCashAED,
-    grossRent, vacancyLoss, pmFee, serviceCharge, annualLoanPayment: annualLoan, annualNetCF,
+    grossRent, vacancyLoss, pmFee, serviceCharge, maintenance, annualLoanPayment: annualLoan, annualNetCF,
     salePrice: main.salePrice, saleAgentFee: main.saleAgentFee, saleNOC: main.saleNOC,
     remainingLoan: main.remainingLoan, netSaleProceeds: main.netSaleProceeds,
     irr: mainIrr, multiple, cashflowSeries: main.cf,
@@ -3483,6 +3485,27 @@ function render() {
   document.getElementById("fxRateLabel").textContent = cur;
   applyNetLabels(cur);
   updateSqftEquiv();
+  // Issue #3: show the OTHER side of the appreciation conversion so users
+  // see what their cumulative input implies as an annual rate, or vice versa.
+  (() => {
+    const el = document.getElementById("apprImpliedRate");
+    if (!el) return;
+    const totalY = ((inp.holdYears || 0) * 12 + (inp.holdMonths || 0)) / 12;
+    const v = inp.appreciation || 0;
+    if (totalY <= 0 || v === 0) { el.textContent = ""; return; }
+    const langCur = document.body.getAttribute("data-lang") || "ja";
+    if (inp.appreciationMode === "annual") {
+      const cumPct = (Math.pow(1 + v/100, totalY) - 1) * 100;
+      el.textContent = langCur === "ja"
+        ? `→ ${totalY.toFixed(2)}年で累計 ${cumPct.toFixed(1)}%`
+        : `→ ${cumPct.toFixed(1)}% cumulative over ${totalY.toFixed(2)}y`;
+    } else {
+      const annualPct = (Math.pow(1 + v/100, 1/totalY) - 1) * 100;
+      el.textContent = langCur === "ja"
+        ? `→ 年率換算 ${annualPct.toFixed(2)}% / 年（${totalY.toFixed(2)}年保有）`
+        : `→ implied ${annualPct.toFixed(2)}% / yr (over ${totalY.toFixed(2)}y)`;
+    }
+  })();
   document.getElementById("kpiIrr").textContent = fmtPct(r.irr);
   document.getElementById("kpiMultiple").textContent = fmtMult(r.multiple);
 
