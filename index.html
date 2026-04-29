@@ -1546,6 +1546,7 @@
           <div class="field-row">
             <div class="field"><label><span class="ja">空室率 (%)</span><span class="en">Vacancy (%)</span></label><input type="number" id="vacancy" value="10" min="0" max="50" step="1"></div>
             <div class="field"><label><span class="ja">PM費 (%)</span><span class="en">PM fee (%)</span></label><input type="number" id="pmFee" value="5" min="0" max="15" step="0.5"></div>
+            <div class="field"><label><span class="ja">保守費 (% / 年)</span><span class="en">Maint. (% p.a.)</span></label><input type="number" id="maintenancePct" value="0.2" min="0" max="5" step="0.05"></div>
           </div>
           <div class="field">
             <label><span class="ja">家具家電費用（AED）</span><span class="en">Furniture (AED)</span></label>
@@ -1557,15 +1558,15 @@
           <h3><span class="count">4</span><span class="ja">売却前提</span><span class="en">Sale</span></h3>
           <div class="field">
             <label>
-              <span class="ja"><span id="apprLabelJa">累計値上がり率</span> (%) <small id="apprNoteJa">※保有期間中の総値上がり</small></span>
-              <span class="en"><span id="apprLabelEn">Cumulative appreciation</span> (%) <small id="apprNoteEn">over hold period</small></span>
+              <span class="ja"><span id="apprLabelJa">年間値上がり率</span> (%) <small id="apprNoteJa">※年率（複利で適用）</small></span>
+              <span class="en"><span id="apprLabelEn">Annual appreciation</span> (%) <small id="apprNoteEn">compounded yearly</small></span>
             </label>
             <div class="appr-btns" role="group">
-              <button type="button" class="appr-btn active" data-mode="cumulative"><span class="ja">累計</span><span class="en">Total</span></button>
-              <button type="button" class="appr-btn" data-mode="annual"><span class="ja">年間</span><span class="en">Annual</span></button>
+              <button type="button" class="appr-btn" data-mode="cumulative"><span class="ja">累計</span><span class="en">Total</span></button>
+              <button type="button" class="appr-btn active" data-mode="annual"><span class="ja">年間</span><span class="en">Annual</span></button>
             </div>
-            <input type="hidden" id="appreciationMode" value="cumulative">
-            <input type="number" id="appreciation" value="35" step="1">
+            <input type="hidden" id="appreciationMode" value="annual">
+            <input type="number" id="appreciation" value="7" step="0.5">
             <small id="apprImpliedRate" style="display:block; margin-top:4px; font-size:11px; color:var(--text-muted); font-style:italic;"></small>
           </div>
           <div class="field">
@@ -2494,7 +2495,7 @@ function generateReport() {
             <tr><td>${T("グロス利回り", "Gross yield")}</td><td>${inp.grossYield}% / ${T("年", "yr")}</td></tr>
             <tr><td>${T("空室率", "Vacancy")}</td><td>${inp.vacancy}%</td></tr>
             <tr><td>${T("PM費", "PM fee")}</td><td>${inp.pmFee}%</td></tr>
-            <tr><td>${T("保守・修繕費", "Maintenance")}</td><td>0.2% × ${T("価格", "price")} = ${fmtN(r.maintenance)} AED/yr</td></tr>
+            <tr><td>${T("保守・修繕費", "Maintenance")}</td><td>${inp.maintenancePct}% × ${T("価格", "price")} = ${fmtN(r.maintenance)} AED/yr</td></tr>
             <tr><td>${T("値上がり率", "Appreciation")}</td><td>${inp.appreciation}% (${inp.appreciationMode==="annual"?T("年率","annual"):T("累計","cumulative")})</td></tr>
           </table>
         </div>
@@ -2699,6 +2700,7 @@ function loadPreset(key) {
   document.getElementById("propertyType").value = pr.type;
   document.getElementById("grossYield").value = pr.yield;
   document.getElementById("appreciation").value = pr.appreciation;
+  setApprMode(pr.apprMode || "cumulative");
   document.getElementById("furniture").value = pr.furniture;
   if (pr.mode) document.getElementById("purchaseMode").value = pr.mode;
   if (pr.completionYear) document.getElementById("completionYear").value = pr.completionYear;
@@ -2859,7 +2861,7 @@ function openIrrBreakdown() {
         <tr><td style="padding:3px 8px;">- 空室損 (${inp.vacancy}%)</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.vacancyLoss)}</td></tr>
         <tr><td style="padding:3px 8px;">- PM費 (${inp.pmFee}%)</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.pmFee)}</td></tr>
         <tr><td style="padding:3px 8px;">- サービスチャージ</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.serviceCharge)}</td></tr>
-        <tr><td style="padding:3px 8px;">- <span class="ja">保守・修繕費</span><span class="en">Maintenance</span> (0.2% × <span class="ja">物件価格</span><span class="en">price</span>)</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.maintenance)}</td></tr>
+        <tr><td style="padding:3px 8px;">- <span class="ja">保守・修繕費</span><span class="en">Maintenance</span> (${inp.maintenancePct}% × <span class="ja">物件価格</span><span class="en">price</span>)</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.maintenance)}</td></tr>
         ${inp.useMortgage ? `<tr><td style="padding:3px 8px;">- ローン年間返済</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.annualLoanPayment)}</td></tr>` : ''}
         <tr style="border-top:1px solid var(--border);"><td style="padding:6px 8px; font-weight:700;">年間ネットCF</td><td style="text-align:right;font-family:monospace; font-weight:700; color:${r.annualNetCF >= 0 ? 'var(--positive)' : 'var(--negative)'}">${r.annualNetCF >= 0 ? '+' : ''}${fmtN(r.annualNetCF)} AED</td></tr>
       </table>
@@ -3231,7 +3233,7 @@ function calculate(inp) {
   const effRent = grossRent - vacancyLoss;
   const pmFee = effRent * (inp.pmFee / 100);
   const serviceCharge = inp.sqft * inp.serviceChargePsf;
-  const maintenance = p * 0.002;
+  const maintenance = p * ((inp.maintenancePct || 0) / 100);
   const monthlyLoan = monthlyPayment(loanAmount, inp.mortgageRate / 100, inp.mortgageTerm);
   const annualLoan = monthlyLoan * 12;
   const annualNetCF = effRent - pmFee - serviceCharge - maintenance - annualLoan;
@@ -3293,30 +3295,6 @@ function calculate(inp) {
     return { cf, times, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net, operatingYears: opMonths / 12, saleYr: saleYrLocal, totalMonths };
   }
 
-  // For OFF-PLAN FLIP scenarios (s1): totalYears = total years from purchase,
-  // pre-handover assignment sale, NO operating CF.
-  function scenTotal(totalYears, apprCumulativePct) {
-    const operatingYears = Math.max(0, totalYears - constructionYears);
-    const cYears = Math.min(constructionYears, totalYears);
-    const cf = [-initialCashAED];
-    for (let y = 0; y < cYears; y++) cf.push(0);
-    for (let y = 0; y < operatingYears; y++) cf.push(annualNetCF);
-    const salePrice = p * (1 + apprCumulativePct/100);
-    const saleAgentFee = salePrice * 0.021;
-    const saleNOC = 5000;
-    let remainingLoan = loanAmount;
-    if (inp.useMortgage && loanAmount > 0) {
-      const r = inp.mortgageRate/100/12, n = inp.mortgageTerm*12, k = totalYears*12;
-      if (r > 0) remainingLoan = loanAmount * (Math.pow(1+r,n) - Math.pow(1+r,k)) / (Math.pow(1+r,n) - 1);
-      else remainingLoan = loanAmount * (1 - k/n);
-      if (remainingLoan < 0) remainingLoan = 0;
-    }
-    const net = salePrice - saleAgentFee - saleNOC - remainingLoan;
-    if (cf.length > 1) cf[cf.length-1] += net;
-    else cf.push(net);
-    return { cf, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net, operatingYears, cYears };
-  }
-
   // Fix #5: include holdMonths in totalYearsHeld so annual→cumulative compounds
   // over the full hold period (not just integer years).
   const totalYearsHeld = inp.holdYears + (inp.holdMonths || 0) / 12;
@@ -3371,9 +3349,10 @@ function getInputs() {
     grossYield: +document.getElementById("grossYield").value || 0,
     vacancy: +document.getElementById("vacancy").value || 0,
     pmFee: +document.getElementById("pmFee").value || 0,
+    maintenancePct: +document.getElementById("maintenancePct").value || 0,
     furniture: +document.getElementById("furniture").value || 0,
     appreciation: +document.getElementById("appreciation").value || 0,
-    appreciationMode: document.getElementById("appreciationMode").value || "cumulative",
+    appreciationMode: document.getElementById("appreciationMode").value || "annual",
     holdYears: +document.getElementById("holdYears").value || 1,
     holdMonths: +document.getElementById("holdMonths").value || 0,
     completionYear: +document.getElementById("completionYear").value || new Date().getFullYear(),
@@ -3719,7 +3698,7 @@ function render() {
     if (isFullConstruction) {
       cells = `<td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>`;
     } else {
-      // Include maintenance (price × 0.2%) — was previously hidden from UI
+      // Include maintenance (price × user maintenancePct)
       const netCF = (r.grossRent * fRent) - (r.vacancyLoss * fRent) - (r.pmFee * fRent) - (r.serviceCharge * fCost) - (r.maintenance * fCost) - (r.annualLoanPayment * fCost);
       cells = `<td class="num">${fmt(r.grossRent * fRent)}</td>
          <td class="num" style="color:var(--negative)">${fmt(-r.vacancyLoss * fRent)}</td>
