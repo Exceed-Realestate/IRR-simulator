@@ -1368,11 +1368,11 @@
 <div class="hero">
   <div class="lang-ja">
     <h2>EXIT シミュレーター｜ドバイ不動産 IRR 試算ツール</h2>
-    <p>物件選定から融資・運用・売却まで、保有期間中のキャッシュフローと出口時の IRR・着金額（HKD/USD/JPY/EUR）をリアルタイムに算出します。8物件のプリセットから選択するか、任意の数値を入力してご利用ください。</p>
+    <p>物件選定から融資・運用・売却まで、保有期間中のキャッシュフローと出口時の IRR・着金額（HKD/USD/JPY/EUR/CNY/KRW/INR/RUB）をリアルタイムに算出します。8物件のプリセットから選択するか、任意の数値を入力してご利用ください。</p>
   </div>
   <div class="lang-en">
     <h2>EXIT Simulator · Dubai Property IRR Tool</h2>
-    <p>Model holding-period cash flow, sale-time IRR, and net proceeds (HKD / USD / JPY / EUR) across 8 property presets — or any custom inputs. Adjust LTV, holding period, currency, and FX to see results live.</p>
+    <p>Model holding-period cash flow, sale-time IRR, and net proceeds (HKD / USD / JPY / EUR / CNY / KRW / INR / RUB) across 8 property presets — or any custom inputs. Adjust LTV, holding period, currency, and FX to see results live.</p>
   </div>
   <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px;">
     <button class="demo-button" onclick="runDemo()">
@@ -1756,6 +1756,7 @@
               <th class="num"><span class="ja">空室</span><span class="en">Vac</span></th>
               <th class="num"><span class="ja">PM費</span><span class="en">PM</span></th>
               <th class="num"><span class="ja">SC</span><span class="en">Svc</span></th>
+              <th class="num"><span class="ja">保守</span><span class="en">Maint</span></th>
               <th class="num"><span class="ja">ローン</span><span class="en">Loan</span></th>
               <th class="num"><span class="ja">ネットCF</span><span class="en">Net CF</span></th>
             </tr></thead>
@@ -1969,19 +1970,27 @@
           </select>
         </div>
         <div class="field">
-          <label><span class="ja">完成予定年</span><span class="en">Completion Year</span></label>
-          <select id="cpCompletionYear">
-            <option value="2026">2026</option>
-            <option value="2027">2027</option>
-            <option value="2028" selected>2028</option>
-            <option value="2029">2029</option>
-            <option value="2030">2030</option>
-            <option value="2031">2031</option>
-            <option value="2032">2032</option>
-            <option value="2033">2033</option>
-            <option value="2034">2034</option>
-            <option value="2035">2035</option>
-          </select>
+          <label><span class="ja">完成予定年・四半期</span><span class="en">Completion Year &amp; Quarter</span></label>
+          <div style="display:flex; gap:6px;">
+            <select id="cpCompletionYear" style="flex:1">
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+              <option value="2028" selected>2028</option>
+              <option value="2029">2029</option>
+              <option value="2030">2030</option>
+              <option value="2031">2031</option>
+              <option value="2032">2032</option>
+              <option value="2033">2033</option>
+              <option value="2034">2034</option>
+              <option value="2035">2035</option>
+            </select>
+            <select id="cpCompletionQuarter" style="flex:0 0 78px">
+              <option value="1" selected>Q1</option>
+              <option value="2">Q2</option>
+              <option value="3">Q3</option>
+              <option value="4">Q4</option>
+            </select>
+          </div>
         </div>
         <div class="field">
           <label><span class="ja">想定賃料利回り (%)</span><span class="en">Gross Yield (%)</span></label>
@@ -2084,8 +2093,8 @@ const demoSteps = [
     target: '.kpi-grid',
     title_ja: 'STEP 4 ｜ 主要KPIをチェック',
     title_en: 'STEP 4 · Check the KPIs',
-    text_ja: '初期手出し・売却額・IRR・着金額が選択通貨（HKD/USD/JPY/EUR）で即座に算出されます。',
-    text_en: 'Initial outlay, sale price, IRR and net proceeds update instantly in the selected currency (HKD/USD/JPY/EUR).',
+    text_ja: '初期手出し・売却額・IRR・着金額が選択通貨（HKD/USD/JPY/EUR/CNY/KRW/INR/RUB）で即座に算出されます。',
+    text_en: 'Initial outlay, sale price, IRR and net proceeds update instantly in the selected currency (HKD/USD/JPY/EUR/CNY/KRW/INR/RUB).',
     delay: 3500
   },
   {
@@ -2929,6 +2938,7 @@ function saveCustomProperty() {
     type: document.getElementById("cpType").value,
     mode: document.getElementById("cpMode").value,
     completionYear: +document.getElementById("cpCompletionYear").value,
+    completionQuarter: +document.getElementById("cpCompletionQuarter").value || 1,
     yield: +document.getElementById("cpYield").value || 6.5,
     appreciation: +document.getElementById("cpAppreciation").value || 35,
     serviceChargePsf: +document.getElementById("cpServiceChargePsf").value || 35,
@@ -3307,19 +3317,28 @@ function calculate(inp) {
     return { cf, salePrice, saleAgentFee, saleNOC, remainingLoan, netSaleProceeds: net, operatingYears, cYears };
   }
 
-  const totalYearsHeld = inp.holdYears;  // operating years post-handover
+  // Fix #5: include holdMonths in totalYearsHeld so annual→cumulative compounds
+  // over the full hold period (not just integer years).
+  const totalYearsHeld = inp.holdYears + (inp.holdMonths || 0) / 12;
   const effectiveCumulativePct = inp.appreciationMode === "annual"
     ? (Math.pow(1 + inp.appreciation/100, totalYearsHeld) - 1) * 100
     : inp.appreciation;
   const main = scenOperating(inp.holdYears, effectiveCumulativePct, inp.holdMonths);
   const mainIrr = irr(main.cf, main.times);
   const multiple = main.cf.slice(1).reduce((a,b) => a+b, 0) / initialCashAED;
-  // Fixed scenarios. s1 = off-plan flip (pre-handover assignment, totalYears
-  // semantic). s2/s3/s4 = post-handover holds (operatingYears semantic).
-  const s1 = scenOperating(2, 25);          // ① Short hold 2 yrs total, ~+25% cum
-  const s2 = scenOperating(4, 32);          // ② Mid hold 4 yrs total, ~+32%
-  const s3 = scenOperating(7, 40);          // ③ Long hold 7 yrs total, ~+40%
-  const s4 = scenOperating(inp.s4Years || 5, inp.s4Appr || 35);  // ④ Custom
+  // Fix #4: scenarios now SCALE WITH USER'S APPRECIATION INPUT instead of using
+  // hardcoded 25/32/40. Convert user's input to an annual rate, then re-apply
+  // it for each scenario's specific hold period.
+  // - cumulative mode: implied annual = (1 + user/100)^(1/userYears) - 1
+  // - annual mode: use user input directly as annual rate
+  const userAnnualRate = inp.appreciationMode === "annual"
+    ? inp.appreciation / 100
+    : (totalYearsHeld > 0 ? Math.pow(1 + inp.appreciation/100, 1/totalYearsHeld) - 1 : 0);
+  const scenAppr = (years) => (Math.pow(1 + userAnnualRate, years) - 1) * 100;
+  const s1 = scenOperating(2, scenAppr(2));   // ① 2-yr scenario @ user's implied annual
+  const s2 = scenOperating(4, scenAppr(4));   // ② 4-yr scenario
+  const s3 = scenOperating(7, scenAppr(7));   // ③ 7-yr scenario
+  const s4 = scenOperating(inp.s4Years || 5, inp.s4Appr || scenAppr(inp.s4Years || 5));  // ④ Custom (fallback to scaled rate)
 
   return {
     cashDown, loanAmount, dld, trustee, titleDeed, oqood, noc, agentFee, mortgageReg, brokerFee,
@@ -3698,13 +3717,15 @@ function render() {
 
     let cells;
     if (isFullConstruction) {
-      cells = `<td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>`;
+      cells = `<td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>`;
     } else {
-      const netCF = (r.grossRent * fRent) - (r.vacancyLoss * fRent) - (r.pmFee * fRent) - (r.serviceCharge * fCost) - (r.annualLoanPayment * fCost);
+      // Include maintenance (price × 0.2%) — was previously hidden from UI
+      const netCF = (r.grossRent * fRent) - (r.vacancyLoss * fRent) - (r.pmFee * fRent) - (r.serviceCharge * fCost) - (r.maintenance * fCost) - (r.annualLoanPayment * fCost);
       cells = `<td class="num">${fmt(r.grossRent * fRent)}</td>
          <td class="num" style="color:var(--negative)">${fmt(-r.vacancyLoss * fRent)}</td>
          <td class="num" style="color:var(--negative)">${fmt(-r.pmFee * fRent)}</td>
          <td class="num" style="color:var(--negative)">${fmt(-r.serviceCharge * fCost)}</td>
+         <td class="num" style="color:var(--negative)">${fmt(-r.maintenance * fCost)}</td>
          <td class="num" style="color:var(--negative)">${fmt(-r.annualLoanPayment * fCost)}</td>
          <td class="num" style="font-weight:600;color:${netCF>=0?'var(--positive)':'var(--negative)'}">${fmt(netCF)}</td>`;
     }
