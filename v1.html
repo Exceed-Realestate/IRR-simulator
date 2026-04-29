@@ -2387,12 +2387,33 @@ function navigateVersion(v) {
 document.addEventListener("DOMContentLoaded", () => {
   const sel = document.getElementById("versionSelector");
   if (sel) sel.value = SIM_VERSION;
-  // V4 / V5: hide purchase date inputs (lock to today)
+  // V4 / V5: lock purchase date inputs to today, but allow edit via unlock button
   if (VF.hidePurchaseDate) {
     const yEl = document.getElementById("purchaseYear");
     const qEl = document.getElementById("purchaseQuarter");
     const field = yEl?.closest(".field");
-    if (field) field.style.display = "none";
+    if (field && yEl && qEl) {
+      yEl.disabled = true;
+      qEl.disabled = true;
+      yEl.style.opacity = "0.6";
+      qEl.style.opacity = "0.6";
+      const lockBar = document.createElement("div");
+      lockBar.style.cssText = "display:flex;align-items:center;gap:8px;margin-top:6px;font-size:11px;";
+      lockBar.innerHTML = `
+        <span style="color:var(--text-muted)">🔒 <span class="ja">今日に固定中</span><span class="en">Locked to today</span></span>
+        <button type="button" id="unlockPurchase" style="font-size:11px;padding:3px 10px;border:1px solid var(--accent);background:#fff;border-radius:4px;cursor:pointer;color:var(--primary);font-weight:600;">
+          ✏️ <span class="ja">編集する</span><span class="en">Edit</span>
+        </button>
+      `;
+      field.appendChild(lockBar);
+      document.getElementById("unlockPurchase").onclick = () => {
+        yEl.disabled = false;
+        qEl.disabled = false;
+        yEl.style.opacity = "";
+        qEl.style.opacity = "";
+        lockBar.innerHTML = `<span style="color:var(--accent-dark);font-weight:600">🔓 <span class="ja">編集モード</span><span class="en">Editing</span></span>`;
+      };
+    }
   }
   // V1 / V5: update label text to "operating years post-handover"
   if (VF.holdMode === "operating") {
