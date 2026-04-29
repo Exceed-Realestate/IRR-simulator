@@ -1496,7 +1496,7 @@
               </select>
             </div>
           </div>
-          <div class="field">
+          <div class="field" id="completionField">
             <label><span class="ja">完成予定年・四半期</span><span class="en">Completion Year &amp; Quarter</span></label>
             <div style="display:flex; gap:6px;">
               <select id="completionYear" style="flex:1">
@@ -2690,6 +2690,7 @@ function loadPreset(key) {
   if (pr.completionYear) document.getElementById("completionYear").value = pr.completionYear;
   if (pr.completionQuarter) document.getElementById("completionQuarter").value = pr.completionQuarter;
   syncScenarioToggles();
+  syncReadyMode();   // hide/show completion field based on mode
   updateCustomPresetActions(key);
   render();
   closeBrochureModal();
@@ -3080,6 +3081,30 @@ function toggleChart() {
   }
   if (chartVisible) render();
 }
+
+// For Ready properties: hide the 完成予定年 field and force completion = purchase quarter.
+// Operating starts immediately from the day bought.
+function syncReadyMode() {
+  const mode = document.getElementById("purchaseMode")?.value;
+  const isReady = (mode === "ready");
+  const fld = document.getElementById("completionField");
+  if (fld) fld.style.display = isReady ? "none" : "";
+  if (isReady) {
+    const py = document.getElementById("purchaseYear")?.value;
+    const pq = document.getElementById("purchaseQuarter")?.value;
+    const cyEl = document.getElementById("completionYear");
+    const cqEl = document.getElementById("completionQuarter");
+    // If purchase year is in completionYear's options, sync it; else fall back to first option
+    if (cyEl && py) {
+      const exists = [...cyEl.options].some(o => o.value === py);
+      cyEl.value = exists ? py : cyEl.options[0].value;
+    }
+    if (cqEl && pq) cqEl.value = pq;
+  }
+}
+document.getElementById("purchaseMode")?.addEventListener("change", () => { syncReadyMode(); render(); });
+document.getElementById("purchaseYear")?.addEventListener("change", () => { syncReadyMode(); });
+document.getElementById("purchaseQuarter")?.addEventListener("change", () => { syncReadyMode(); });
 
 function syncScenarioToggles() {
   // For Ready properties, scenario 1 (off-plan flip) doesn't apply
@@ -4047,6 +4072,7 @@ window.addEventListener("scroll", updateActiveNav);
   refresh();
 })();
 
+if (typeof syncReadyMode === "function") syncReadyMode();
 render();
 </script>
 
