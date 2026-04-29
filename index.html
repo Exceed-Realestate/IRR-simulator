@@ -1430,7 +1430,7 @@
               <option value="oneZaabeel">One Za'abeel 2BR (13.5M)</option>
               <option value="serenia">Serenia Living 2BR (7.0M)</option>
               <option value="sixSenses3">Six Senses Palm 3BR Duplex G/6 — 6,151 sqft (32.0M)</option>
-              <option value="sixSenses3b">Six Senses Palm 3BR Duplex 1/6 — 6,478 sqft (36.0M)</option>
+              <option value="sixSenses3b">Six Senses Palm 3BR Duplex 1/6 — 6,478 sqft (34.5M)</option>
               <option value="sixSenses4">Six Senses Palm 4BR Simplex — 4,375 sqft (32.0M)</option>
               <option value="orla">ORLA Dorchester 3BR (31.0M)</option>
               <option value="palmJebel">Palm Jebel Ali 6BR Villa (18.5M)</option>
@@ -1868,7 +1868,7 @@
         <div class="brochure-card">
           <span class="b-tag ready">READY</span>
           <h4>Six Senses Residences<br>The Palm · 3BR Duplex 1/6</h4>
-          <div class="b-price">AED 36.0M</div>
+          <div class="b-price">AED 34.5M</div>
           <div class="b-specs"><span><strong>6,478</strong> sqft</span><span><span class="ja">利回り</span><span class="en">Yield</span> <strong>7.2-7.6%</strong></span></div>
           <div class="b-actions">
             <a class="b-btn primary" href="./brochures/SixSenses_Palm.pdf" download><span class="ja">資料DL</span><span class="en">Download</span></a>
@@ -2679,12 +2679,12 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBroch
 // Prices reflect "Updated Net Price" from latest property sheet (April 2026)
 // 'appreciation' is now CUMULATIVE % over the holding period (not annual compound)
 const presets = {
-  ritz:        { price: 13000000, sqft: 2524, yield: 6.4,  appreciation: 35, serviceChargePsf: 32.5, type: "branded", furniture: 0, mode: "offplan", completionYear: 2027, completionQuarter: 4 },
+  ritz:        { price: 13000000, sqft: 2524, yield: 6.4,  appreciation: 25, serviceChargePsf: 32.5, type: "branded", furniture: 0, mode: "offplan", completionYear: 2027, completionQuarter: 4, holdYears: 2, holdMonths: 0 },
   oneZaabeel:  { price: 13500000, sqft: 2008, yield: 6.0,  appreciation: 32, serviceChargePsf: 45.0, type: "branded", furniture: 0, mode: "ready",   completionYear: 2026, completionQuarter: 1 },
   serenia:     { price: 7000000,  sqft: 2193, yield: 7.3,  appreciation: 35, serviceChargePsf: 35.0, type: "branded", furniture: 0, mode: "ready",   completionYear: 2026, completionQuarter: 1 },
-  sixSenses3:  { price: 32000000, sqft: 6151, yield: 8.0,  appreciation: 42, serviceChargePsf: 40.0, type: "branded", furniture: 0, mode: "ready",   completionYear: 2026, completionQuarter: 1 },
-  sixSenses3b: { price: 36000000, sqft: 6478, yield: 7.4,  appreciation: 42, serviceChargePsf: 40.0, type: "branded", furniture: 0, mode: "ready",   completionYear: 2026, completionQuarter: 1 },
-  sixSenses4:  { price: 32000000, sqft: 4375, yield: 6.5,  appreciation: 42, serviceChargePsf: 40.0, type: "branded", furniture: 0, mode: "ready",   completionYear: 2026, completionQuarter: 1 },
+  sixSenses3:  { price: 32000000, sqft: 6151, yield: 8.0,  appreciation: 20, serviceChargePsf: 40.0, type: "branded", furniture: 0, mode: "ready",   completionYear: 2026, completionQuarter: 1, holdYears: 1, holdMonths: 6 },
+  sixSenses3b: { price: 34500000, sqft: 6478, yield: 7.4,  appreciation: 20, serviceChargePsf: 40.0, type: "branded", furniture: 0, mode: "ready",   completionYear: 2026, completionQuarter: 1, holdYears: 1, holdMonths: 6 },
+  sixSenses4:  { price: 32000000, sqft: 4375, yield: 6.5,  appreciation: 20, serviceChargePsf: 40.0, type: "branded", furniture: 0, mode: "ready",   completionYear: 2026, completionQuarter: 1, holdYears: 2, holdMonths: 0 },
   orla:        { price: 31000000, sqft: 4475, yield: 7.8,  appreciation: 42, serviceChargePsf: 45.0, type: "branded", furniture: 0, mode: "offplan", completionYear: 2027, completionQuarter: 1 },
   palmJebel:   { price: 18500000, sqft: 7653, yield: 12.5, appreciation: 47, serviceChargePsf: 8.0,  type: "villa",   furniture: 0, mode: "offplan", completionYear: 2029, completionQuarter: 1 },
   emerald:     { price: 125000000,sqft: 25197,yield: 4.6,  appreciation: 32, serviceChargePsf: 8.0,  type: "villa",   furniture: 0, mode: "ready",   completionYear: 2026, completionQuarter: 1 }
@@ -2705,6 +2705,8 @@ function loadPreset(key) {
   if (pr.mode) document.getElementById("purchaseMode").value = pr.mode;
   if (pr.completionYear) document.getElementById("completionYear").value = pr.completionYear;
   if (pr.completionQuarter) document.getElementById("completionQuarter").value = pr.completionQuarter;
+  if (typeof pr.holdYears === "number") document.getElementById("holdYears").value = pr.holdYears;
+  if (typeof pr.holdMonths === "number") document.getElementById("holdMonths").value = pr.holdMonths;
   syncScenarioToggles();
   syncReadyMode();   // hide/show completion field based on mode
   updateCustomPresetActions(key);
