@@ -2558,22 +2558,6 @@ function generateReport() {
       </table>
     </section>
 
-    ${cumImgSrc ? `
-    <section class="rpt-section rpt-page-break">
-      <h2>${T("累積キャッシュフロー", "Cumulative Cash Flow")}</h2>
-      <img src="${cumImgSrc}" style="width:100%; max-width:100%; border:1px solid #e5e7eb; border-radius:6px;">
-    </section>` : ''}
-
-    ${scenRows ? `
-    <section class="rpt-section">
-      <h2>${T("シナリオ比較", "Alternative Holding Scenarios")}</h2>
-      ${scenImgSrc ? `<img src="${scenImgSrc}" style="width:100%; max-width:100%; margin-bottom:10px; border:1px solid #e5e7eb; border-radius:6px;">` : ''}
-      <table class="rpt-tbl rpt-tbl-bordered">
-        <thead><tr><th>${T("シナリオ", "Scenario")}</th><th style="text-align:right;">${T("累計リターン", "Total Return")}</th><th style="text-align:right;">${T("年率IRR", "Annual IRR")}</th><th style="text-align:right;">${T("着金ネット", "Net Proceeds")}</th></tr></thead>
-        <tbody>${scenRows}</tbody>
-      </table>
-    </section>` : ''}
-
     <footer class="rpt-footer">
       <div class="rpt-disclaimer">
         <strong>${T("前提：", "Assumptions:")}</strong> DLD 4%, ${T("エージェント", "Agent")} 2%+VAT, Trustee AED 4,000, NOC AED 5,000, ${T("モーゲージ登記", "Mortgage registration")} 0.25%, ${T("売却エージェント", "Sale agent")} 2.1%, UAE CGT 0%, ${T("HK属地主義（非課税）", "HK territorial tax (exempt)")}.<br>
