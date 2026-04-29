@@ -3173,13 +3173,15 @@ function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, du
   const purchaseYear = Math.floor(purchaseQ / 4);
   const saleYear = Math.floor(saleQ / 4);
 
-  // Dubai 1-year-lease rule: only complete 4-quarter blocks from handoverQ count as leased.
-  // Residual quarters AFTER the last complete lease are vacant.
+  // 1-year-lease rule applied always in the calendar (visualization).
+  // Only complete 4-quarter blocks from handoverQ count as leased.
+  // Residual quarters AFTER the last complete lease are shown vacant (yellow).
+  // The Dubai toggle controls how this is reflected in CF math, not visualization.
   const operatingQuartersTotal = Math.max(0, saleQ - handoverQ + 1);
   const numFullLeases = Math.floor(operatingQuartersTotal / 4);
   const lastLeasedQ = handoverQ + numFullLeases * 4 - 1;
   const vacantStartQ = lastLeasedQ + 1;
-  const vacantApplies = dubaiOn && vacantStartQ <= saleQ && vacantStartQ >= handoverQ;
+  const vacantApplies = vacantStartQ <= saleQ && vacantStartQ >= handoverQ;
 
   // Header row: Q1 Q2 Q3 Q4
   const header = `<div class="tl-row tl-header">
