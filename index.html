@@ -3970,7 +3970,7 @@ function drawYearOutlines(chartEl, purchaseQuarter, totalHoldQuarters) {
   const total = totalHoldQuarters || (rows.length * 4);
   const numFullYears = Math.floor(total / 4);
 
-  const drawArrow = (rowIdx, fromCol, toCol, label, dashed) => {
+  const drawArrow = (rowIdx, fromCol, toCol, label, leftArrow, rightArrow) => {
     const cells = rows[rowIdx]?.querySelectorAll(".tl-q");
     if (!cells || !cells[fromCol] || !cells[toCol]) return;
     const r1 = cells[fromCol].getBoundingClientRect();
@@ -3981,10 +3981,14 @@ function drawYearOutlines(chartEl, purchaseQuarter, totalHoldQuarters) {
     const arrow = document.createElement("div");
     arrow.className = "tl-year-arrow";
     arrow.style.cssText = `position:absolute; left:${left}px; top:${top}px; width:${width}px; height:0; pointer-events:none; z-index:10;`;
+    // Inset the dotted line only on sides where an arrowhead actually sits;
+    // otherwise stretch the line to the cell edge so split-row spans look continuous.
+    const lineLeft = leftArrow ? '8px' : '0';
+    const lineRight = rightArrow ? '8px' : '0';
     arrow.innerHTML = `
-      <div style="position:absolute; left:8px; right:8px; top:0; border-top:2.5px dotted #fca5a5;"></div>
-      <div style="position:absolute; left:0; top:-6px; width:0; height:0; border-right:8px solid #fca5a5; border-top:6px solid transparent; border-bottom:6px solid transparent;"></div>
-      <div style="position:absolute; right:0; top:-6px; width:0; height:0; border-left:8px solid #fca5a5; border-top:6px solid transparent; border-bottom:6px solid transparent;"></div>
+      <div style="position:absolute; left:${lineLeft}; right:${lineRight}; top:0; border-top:2.5px dotted #fca5a5;"></div>
+      ${leftArrow ? `<div style="position:absolute; left:0; top:-6px; width:0; height:0; border-right:8px solid #fca5a5; border-top:6px solid transparent; border-bottom:6px solid transparent;"></div>` : ''}
+      ${rightArrow ? `<div style="position:absolute; right:0; top:-6px; width:0; height:0; border-left:8px solid #fca5a5; border-top:6px solid transparent; border-bottom:6px solid transparent;"></div>` : ''}
       ${label ? `<div style="position:absolute; left:50%; top:-13px; transform:translateX(-50%); font-size:10px; color:#fca5a5; font-weight:700; background:#fff; padding:1px 6px; line-height:1.1; border:1px solid #fca5a5; border-radius:3px; white-space:nowrap;">${label}</div>` : ''}
     `;
     chartEl.appendChild(arrow);
@@ -3999,10 +4003,15 @@ function drawYearOutlines(chartEl, purchaseQuarter, totalHoldQuarters) {
     const endCol = endAbs % 4;
     if (startRow >= rows.length) break;
     if (startRow === endRow) {
-      drawArrow(startRow, startCol, endCol, `Year ${y+1}`, false);
+      // Whole year on one calendar row → both arrowheads on the same span.
+      drawArrow(startRow, startCol, endCol, `Year ${y+1}`, true, true);
     } else {
-      drawArrow(startRow, startCol, 3, `Year ${y+1}`, false);
-      if (endRow < rows.length) drawArrow(endRow, 0, endCol, '', false);
+      // Year crosses calendar-year boundary. Draw two segments that together
+      // look like one continuous arrow: leading half has only the left head,
+      // trailing half has only the right head; the dotted line on each
+      // segment runs to the row edge so they read as one span.
+      drawArrow(startRow, startCol, 3, `Year ${y+1}`, true, false);
+      if (endRow < rows.length) drawArrow(endRow, 0, endCol, '', false, true);
     }
   }
 }
