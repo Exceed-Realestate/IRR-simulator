@@ -1070,6 +1070,25 @@
     #customReport .rpt-cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     #customReport .rpt-tbl-bordered thead { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
+    /* IRR breakdown print mode: show only the IRR modal body */
+    body.irr-print-mode > *:not(#irrBreakdownModal):not(script):not(style) { display: none !important; }
+    body.irr-print-mode #irrBreakdownModal {
+      display: block !important; position: static !important;
+      background: #fff !important; padding: 0 !important;
+    }
+    body.irr-print-mode #irrBreakdownModal .modal {
+      box-shadow: none !important; max-width: 100% !important;
+      border: none !important; max-height: none !important; overflow: visible !important;
+    }
+    body.irr-print-mode #irrBreakdownModal .modal-header {
+      background: #0a2540 !important; color: #fff !important;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    body.irr-print-mode #irrBreakdownModal .modal-header > div:last-child { display: none !important; }
+    body.irr-print-mode #irrBreakdownModal .modal-body { overflow: visible !important; max-height: none !important; }
+    body.irr-print-mode #irrBreakdownModal .modal-body > div { page-break-inside: avoid; }
+    body.irr-print-mode #irrBreakdownModal * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
     /* SINGLE COLUMN flow — packed tight to fit landscape A4 in 2 pages */
     body.print-sim-only .simulator-container {
       display: block !important;
@@ -2004,7 +2023,12 @@
         <h2><span class="ja">IRR 計算の詳細</span><span class="en">IRR Calculation Details</span></h2>
         <div class="subtitle"><span class="ja">この IRR がどう導かれたか — ステップ毎の内訳</span><span class="en">How this IRR is derived — step by step</span></div>
       </div>
-      <button class="modal-close" onclick="closeIrrBreakdown()">✕</button>
+      <div style="display:flex; gap:8px;">
+        <button onclick="printIrrBreakdown()" style="background:var(--primary); color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;" title="計算ロジックを印刷 / Print calculation">
+          📄 <span class="ja">印刷</span><span class="en">Print</span>
+        </button>
+        <button class="modal-close" onclick="closeIrrBreakdown()">✕</button>
+      </div>
     </div>
     <div class="modal-body" id="irrBreakdownBody" style="font-size:13px; line-height:1.6;">
       <!-- Populated by openIrrBreakdown() -->
@@ -2655,6 +2679,30 @@ function closeIrrBreakdown() {
   const m = document.getElementById("irrBreakdownModal");
   if (m) m.classList.remove("open");
   document.body.style.overflow = "";
+}
+// Print just the IRR calculation breakdown (Steps 1–5) as a PDF
+function printIrrBreakdown() {
+  const m = document.getElementById("irrBreakdownModal");
+  if (!m || !m.classList.contains("open")) return;
+  const originalTitle = document.title;
+  document.title = `Exceed_IRR_Calculation_${new Date().toISOString().slice(0,10)}`;
+  let pageStyle = document.getElementById("irr-print-page");
+  if (pageStyle) pageStyle.remove();
+  pageStyle = document.createElement("style");
+  pageStyle.id = "irr-print-page";
+  pageStyle.textContent = "@media print { @page { size: A4 portrait !important; margin: 14mm 12mm !important; } }";
+  document.head.appendChild(pageStyle);
+  document.body.classList.add("irr-print-mode");
+  setTimeout(() => window.print(), 200);
+  const cleanup = () => {
+    document.body.classList.remove("irr-print-mode");
+    document.title = originalTitle;
+    const el = document.getElementById("irr-print-page");
+    if (el) el.remove();
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  setTimeout(cleanup, 60000);
 }
 function openIrrBreakdown() {
   const m = document.getElementById("irrBreakdownModal");
