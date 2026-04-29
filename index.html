@@ -1651,22 +1651,22 @@
         </div>
         <div class="kpi-grid">
           <div class="kpi">
-            <div class="kpi-label"><span class="ja">初期手出し合計</span><span class="en">Initial Outlay</span></div>
-            <div class="kpi-value" id="kpiInitialCash">—</div>
-            <div class="kpi-sub" id="kpiInitialCashHkd">—</div>
+            <div class="kpi-label"><span class="ja">購入金額</span><span class="en">Purchase Price</span></div>
+            <div class="kpi-value" id="kpiPurchase">—</div>
+            <div class="kpi-sub" id="kpiPurchaseHkd">—</div>
           </div>
           <div class="kpi">
-            <div class="kpi-label"><span class="ja">売却時グロス</span><span class="en">Gross Sale</span></div>
+            <div class="kpi-label"><span class="ja">売却ターゲット</span><span class="en">Sale Target</span></div>
             <div class="kpi-value" id="kpiSalePrice">—</div>
             <div class="kpi-sub" id="kpiSalePriceHkd">—</div>
           </div>
-          <div class="kpi accent">
-            <div class="kpi-label"><span class="ja net-label-ja">香港着金ネット</span><span class="en net-label-en">Net to HK</span></div>
-            <div class="kpi-value" id="kpiNetHkd">—</div>
-            <div class="kpi-sub" id="kpiNetAed">— AED</div>
+          <div class="kpi">
+            <div class="kpi-label"><span class="ja">保有期間</span><span class="en">Holding Period</span></div>
+            <div class="kpi-value" id="kpiHold">—</div>
+            <div class="kpi-sub" id="kpiHoldRange">—</div>
           </div>
           <div class="kpi accent" style="position:relative;">
-            <div class="kpi-label"><span class="ja">年率リターン (IRR)</span><span class="en">Annualized IRR</span></div>
+            <div class="kpi-label"><span class="ja">IRR</span><span class="en">IRR</span></div>
             <div class="kpi-value" id="kpiIrr">—</div>
             <div class="kpi-sub" id="kpiMultiple">× —</div>
             <button type="button" onclick="openIrrBreakdown()" title="IRR計算の詳細" style="position:absolute; top:8px; right:8px; background:rgba(255,255,255,0.2); color:var(--primary); border:none; border-radius:4px; padding:3px 8px; font-size:10px; font-weight:700; cursor:pointer; letter-spacing:0.05em;">
@@ -2329,10 +2329,11 @@ function generateReport() {
 
   // Cash flow timeline rows (year-from-purchase rolling)
   const cfRows = (r.cashflowSeries || []).map((v, i) => {
-    if (i === 0) return `<tr><td>${T("0年目（購入時）", "Year 0 (Purchase)")}</td><td style="text-align:right;">${fmtN(v)} AED</td></tr>`;
+    const subCur = `<div style="font-size:10px; color:#94a3b8; font-weight:400;">${v>=0?'+':''}${fmtN(v * fx)} ${cur}</div>`;
+    if (i === 0) return `<tr><td>${T("0年目（購入時）", "Year 0 (Purchase)")}</td><td style="text-align:right;">${fmtN(v)} AED${subCur}</td></tr>`;
     const yStart = purchaseQ + (i-1) * 4;
     const yEnd = Math.min(yStart + 3, saleQ);
-    return `<tr><td>${T(`${i}年目`, `Year ${i}`)} <span style="color:#94a3b8;font-size:9px;">${qStr(yStart)} → ${qStr(yEnd)}</span></td><td style="text-align:right; color:${v>=0?'#16a34a':'#dc2626'};">${v>=0?'+':''}${fmtN(v)} AED</td></tr>`;
+    return `<tr><td>${T(`${i}年目`, `Year ${i}`)} <span style="color:#94a3b8;font-size:9px;">${qStr(yStart)} → ${qStr(yEnd)}</span></td><td style="text-align:right; color:${v>=0?'#16a34a':'#dc2626'};">${v>=0?'+':''}${fmtN(v)} AED${subCur}</td></tr>`;
   }).join("");
 
   // Initial outlay rows
@@ -2345,7 +2346,7 @@ function generateReport() {
     ...(inp.useMortgage ? [[T("モーゲージ登記", "Mortgage registration"), r.mortgageReg, T("ローン×0.25% + AED 290", "Loan × 0.25% + AED 290")]] : []),
     ...(inp.useMortgage ? [[T("ブローカー手数料 (1%)", "Broker fee (1%)"), r.brokerFee, T("ローン×1%", "Loan × 1%")]] : []),
     ...(inp.furniture > 0 ? [[T("家具家電", "Furniture"), r.furniture, T("家具設備", "Furnishing")]] : []),
-  ].map(([label, val, note]) => `<tr><td>${label}</td><td style="text-align:right; font-family:monospace;">${fmtN(val)} AED</td><td style="font-size:10px; color:#94a3b8;">${note}</td></tr>`).join("");
+  ].map(([label, val, note]) => `<tr><td>${label}</td><td style="text-align:right; font-family:monospace;">${fmtN(val)} AED<div style="font-size:10px; color:#94a3b8; font-weight:400;">${fmtN(val * fx)} ${cur}</div></td><td style="font-size:10px; color:#94a3b8;">${note}</td></tr>`).join("");
 
   // Sale breakdown rows
   const saleRows = [
@@ -2355,7 +2356,7 @@ function generateReport() {
     ...(r.remainingLoan > 0 ? [[T("ローン残債返済", "Remaining loan payoff"), -r.remainingLoan, T(`${inp.mortgageTerm}年ローン`, `${inp.mortgageTerm}y mortgage`)]] : []),
     [T("UAE売却益課税", "UAE capital gains"), 0, T("ゼロ", "0% — no CGT")],
     [T("香港受取時課税", "HK receipt tax"), 0, T("属地主義で非課税", "Territorial — exempt")],
-  ].map(([label, val, note]) => `<tr><td>${label}</td><td style="text-align:right; font-family:monospace; color:${val>=0?'#16a34a':'#dc2626'};">${val>=0?'+':''}${fmtN(val)} AED</td><td style="font-size:10px; color:#94a3b8;">${note}</td></tr>`).join("");
+  ].map(([label, val, note]) => `<tr><td>${label}</td><td style="text-align:right; font-family:monospace; color:${val>=0?'#16a34a':'#dc2626'};">${val>=0?'+':''}${fmtN(val)} AED${val !== 0 ? `<div style="font-size:10px; color:#94a3b8; font-weight:400;">${val>=0?'+':''}${fmtN(val * fx)} ${cur}</div>` : ''}</td><td style="font-size:10px; color:#94a3b8;">${note}</td></tr>`).join("");
 
   // Scenario rows
   const s = r.scenarios || {};
@@ -2444,24 +2445,24 @@ function generateReport() {
       </div>
       <div class="rpt-kpis">
         <div class="rpt-kpi">
-          <div class="rpt-kpi-label">${T("年率IRR", "Annual IRR")}</div>
-          <div class="rpt-kpi-value">${fmtP(r.irr)}</div>
-          <div class="rpt-kpi-sub">${r.multiple.toFixed(2)}× ${T("総合リターン", "total return")}</div>
+          <div class="rpt-kpi-label">${T("購入金額", "Purchase Price")}</div>
+          <div class="rpt-kpi-value">${fmtN(inp.price)} AED</div>
+          <div class="rpt-kpi-sub">${fmtN(inp.price * fx)} ${cur}</div>
         </div>
         <div class="rpt-kpi">
-          <div class="rpt-kpi-label">${T("着金ネット", "Net Sale Proceeds")}</div>
-          <div class="rpt-kpi-value">${fmtN(r.netSaleProceeds * fx)} ${cur}</div>
-          <div class="rpt-kpi-sub">${fmtN(r.netSaleProceeds)} AED</div>
+          <div class="rpt-kpi-label">${T("売却ターゲット", "Sale Target")}</div>
+          <div class="rpt-kpi-value">${fmtN(r.salePrice)} AED</div>
+          <div class="rpt-kpi-sub">${fmtN(r.salePrice * fx)} ${cur}</div>
         </div>
         <div class="rpt-kpi">
-          <div class="rpt-kpi-label">${T("初期手出し", "Initial Outlay")}</div>
-          <div class="rpt-kpi-value">${fmtN(r.initialCashAED)} AED</div>
-          <div class="rpt-kpi-sub">${fmtN(r.initialCashAED * fx)} ${cur}</div>
-        </div>
-        <div class="rpt-kpi">
-          <div class="rpt-kpi-label">${T("保有期間", "Hold Period")}</div>
+          <div class="rpt-kpi-label">${T("保有期間", "Holding Period")}</div>
           <div class="rpt-kpi-value">${(totalMonthsLocal/12).toFixed(2)}${T("年", "y")}</div>
           <div class="rpt-kpi-sub">${qStr(purchaseQ)} → ${qStr(saleQ)}</div>
+        </div>
+        <div class="rpt-kpi">
+          <div class="rpt-kpi-label">IRR</div>
+          <div class="rpt-kpi-value">${fmtP(r.irr)}</div>
+          <div class="rpt-kpi-sub">${r.multiple.toFixed(2)}× ${T("総合リターン", "total return")}</div>
         </div>
       </div>
     </section>
@@ -2472,7 +2473,7 @@ function generateReport() {
         <div class="rpt-col">
           <h4>${T("物件", "Property")}</h4>
           <table class="rpt-tbl">
-            <tr><td>${T("価格", "Price")}</td><td>${fmtN(inp.price)} AED</td></tr>
+            <tr><td>${T("価格", "Price")}</td><td>${fmtN(inp.price)} AED<div style="font-size:10px; color:#94a3b8;">${fmtN(inp.price * fx)} ${cur}</div></td></tr>
             <tr><td>${T("面積", "Size")}</td><td>${fmtN(inp.sqft)} sqft (${(inp.sqft*0.0929).toFixed(1)} m²)</td></tr>
             <tr><td>${T("サービスチャージ", "Service charge")}</td><td>${inp.serviceChargePsf} AED/sqft/${T("年", "yr")}</td></tr>
             <tr><td>${T("タイプ", "Type")}</td><td>${inp.propertyType || "Branded"}</td></tr>
@@ -2483,9 +2484,9 @@ function generateReport() {
           <table class="rpt-tbl">
             ${inp.useMortgage ? `
               <tr><td>LTV</td><td>${inp.ltv}%</td></tr>
-              <tr><td>${T("借入額", "Loan amount")}</td><td>${fmtN(r.loanAmount)} AED</td></tr>
+              <tr><td>${T("借入額", "Loan amount")}</td><td>${fmtN(r.loanAmount)} AED<div style="font-size:10px; color:#94a3b8;">${fmtN(r.loanAmount * fx)} ${cur}</div></td></tr>
               <tr><td>${T("金利 / 期間", "Rate / Term")}</td><td>${inp.mortgageRate}% / ${inp.mortgageTerm}${T("年", "y")}</td></tr>
-              <tr><td>${T("月額返済", "Monthly payment")}</td><td>${fmtN(r.annualLoanPayment/12)} AED</td></tr>
+              <tr><td>${T("月額返済", "Monthly payment")}</td><td>${fmtN(r.annualLoanPayment/12)} AED<div style="font-size:10px; color:#94a3b8;">${fmtN((r.annualLoanPayment/12) * fx)} ${cur}</div></td></tr>
             ` : `<tr><td colspan="2" style="color:#94a3b8;">${T("現金購入", "Cash purchase")}</td></tr>`}
           </table>
         </div>
@@ -3513,12 +3514,26 @@ function render() {
   const L = (k) => getLabel(k);
 
   const cur = inp.currency;
-  document.getElementById("kpiInitialCash").textContent = fmt(r.initialCashAED) + " AED";
-  document.getElementById("kpiInitialCashHkd").textContent = fmt(r.initialCashAED * fx) + " " + cur;
+  const langCur0 = document.body.getAttribute("data-lang") || "ja";
+  document.getElementById("kpiPurchase").textContent = fmt(inp.price) + " AED";
+  document.getElementById("kpiPurchaseHkd").textContent = fmt(inp.price * fx) + " " + cur;
   document.getElementById("kpiSalePrice").textContent = fmt(r.salePrice) + " AED";
   document.getElementById("kpiSalePriceHkd").textContent = fmt(r.salePrice * fx) + " " + cur;
-  document.getElementById("kpiNetHkd").textContent = fmt(r.netSaleProceeds * fx) + " " + cur;
-  document.getElementById("kpiNetAed").textContent = fmt(r.netSaleProceeds) + " AED";
+  // Hold KPI: total months, formatted as "Ny Mmo" or "N.NNy"
+  {
+    const totalMonthsKpi = (inp.holdYears || 0) * 12 + (inp.holdMonths || 0);
+    const yKpi = Math.floor(totalMonthsKpi / 12);
+    const mKpi = totalMonthsKpi % 12;
+    const holdLabel = langCur0 === "ja"
+      ? (mKpi === 0 ? `${yKpi}年` : (yKpi === 0 ? `${mKpi}ヶ月` : `${yKpi}年${mKpi}ヶ月`))
+      : (mKpi === 0 ? `${yKpi}y` : (yKpi === 0 ? `${mKpi}mo` : `${yKpi}y ${mKpi}mo`));
+    const purchaseQabsKpi = (inp.purchaseYear || new Date().getFullYear()) * 4 + ((inp.purchaseQuarter || 1) - 1);
+    const totalQKpi = Math.ceil(Math.max(1, totalMonthsKpi) / 3);
+    const saleQabsKpi = purchaseQabsKpi + totalQKpi - 1;
+    const qLabel = (qa) => `${Math.floor(qa / 4)} Q${(qa % 4) + 1}`;
+    document.getElementById("kpiHold").textContent = holdLabel;
+    document.getElementById("kpiHoldRange").textContent = `${qLabel(purchaseQabsKpi)} → ${qLabel(saleQabsKpi)}`;
+  }
   document.querySelectorAll(".cur-label").forEach(el => { el.textContent = cur; });
   document.getElementById("fxRateLabel").textContent = cur;
   applyNetLabels(cur);
@@ -3949,7 +3964,7 @@ function drawTimelineChart({ purchaseQ, handoverQ, saleQ, holdYears, dubaiOn, pu
       <span><span class="tl-legend-dot" style="background:#94a3b8"></span><span class="ja">建設中</span><span class="en">Construction</span></span>
       <span><span class="tl-legend-dot" style="background:var(--s2)"></span><span class="ja">運用中</span><span class="en">Operating</span></span>
       <span><span class="tl-legend-dot" style="background:repeating-linear-gradient(45deg,#fde68a,#fde68a 5px,#fef3c7 5px,#fef3c7 10px)"></span><span class="ja">空室期間（賃貸契約外）</span><span class="en">Vacant (no lease)</span></span>
-      <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:24px;height:0;border-top:2px dotted #ef4444;position:relative;"><span style="position:absolute;left:-1px;top:-3px;width:0;height:0;border-right:5px solid #ef4444;border-top:3px solid transparent;border-bottom:3px solid transparent;"></span><span style="position:absolute;right:-1px;top:-3px;width:0;height:0;border-left:5px solid #ef4444;border-top:3px solid transparent;border-bottom:3px solid transparent;"></span></span><span class="ja">1年単位</span><span class="en">1-year unit</span></span>
+      <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:24px;height:0;border-top:2px dotted #fca5a5;position:relative;"><span style="position:absolute;left:-1px;top:-3px;width:0;height:0;border-right:5px solid #fca5a5;border-top:3px solid transparent;border-bottom:3px solid transparent;"></span><span style="position:absolute;right:-1px;top:-3px;width:0;height:0;border-left:5px solid #fca5a5;border-top:3px solid transparent;border-bottom:3px solid transparent;"></span></span><span class="ja">1年単位</span><span class="en">1-year unit</span></span>
     </div>
   `;
 
@@ -3977,16 +3992,16 @@ function drawYearOutlines(chartEl, purchaseQuarter, totalHoldQuarters) {
     const r1 = cells[fromCol].getBoundingClientRect();
     const r2 = cells[toCol].getBoundingClientRect();
     const left = r1.left - chartRect.left;
-    const top = r1.top - chartRect.top + r1.height / 2;  // overlay on the middle of cells
+    const top = r1.top - chartRect.top + r1.height * 0.72;  // slightly below center
     const width = r2.right - r1.left;
     const arrow = document.createElement("div");
     arrow.className = "tl-year-arrow";
     arrow.style.cssText = `position:absolute; left:${left}px; top:${top}px; width:${width}px; height:0; pointer-events:none; z-index:10;`;
     arrow.innerHTML = `
-      <div style="position:absolute; left:8px; right:8px; top:0; border-top:2.5px dotted #ef4444;"></div>
-      <div style="position:absolute; left:0; top:-6px; width:0; height:0; border-right:8px solid #ef4444; border-top:6px solid transparent; border-bottom:6px solid transparent;"></div>
-      <div style="position:absolute; right:0; top:-6px; width:0; height:0; border-left:8px solid #ef4444; border-top:6px solid transparent; border-bottom:6px solid transparent;"></div>
-      ${label ? `<div style="position:absolute; left:50%; top:-13px; transform:translateX(-50%); font-size:10px; color:#ef4444; font-weight:700; background:#fff; padding:1px 6px; line-height:1.1; border:1px solid #ef4444; border-radius:3px; white-space:nowrap;">${label}</div>` : ''}
+      <div style="position:absolute; left:8px; right:8px; top:0; border-top:2.5px dotted #fca5a5;"></div>
+      <div style="position:absolute; left:0; top:-6px; width:0; height:0; border-right:8px solid #fca5a5; border-top:6px solid transparent; border-bottom:6px solid transparent;"></div>
+      <div style="position:absolute; right:0; top:-6px; width:0; height:0; border-left:8px solid #fca5a5; border-top:6px solid transparent; border-bottom:6px solid transparent;"></div>
+      ${label ? `<div style="position:absolute; left:50%; top:-13px; transform:translateX(-50%); font-size:10px; color:#fca5a5; font-weight:700; background:#fff; padding:1px 6px; line-height:1.1; border:1px solid #fca5a5; border-radius:3px; white-space:nowrap;">${label}</div>` : ''}
     `;
     chartEl.appendChild(arrow);
   };
