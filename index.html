@@ -1562,10 +1562,13 @@
             <div class="kpi-value" id="kpiNetHkd">—</div>
             <div class="kpi-sub" id="kpiNetAed">— AED</div>
           </div>
-          <div class="kpi accent">
+          <div class="kpi accent" style="position:relative;">
             <div class="kpi-label"><span class="ja">年率リターン (IRR)</span><span class="en">Annualized IRR</span></div>
             <div class="kpi-value" id="kpiIrr">—</div>
             <div class="kpi-sub" id="kpiMultiple">× —</div>
+            <button type="button" onclick="openIrrBreakdown()" title="IRR計算の詳細" style="position:absolute; top:8px; right:8px; background:rgba(255,255,255,0.2); color:var(--primary); border:none; border-radius:4px; padding:3px 8px; font-size:10px; font-weight:700; cursor:pointer; letter-spacing:0.05em;">
+              <span class="ja">📊 計算詳細</span><span class="en">📊 Details</span>
+            </button>
           </div>
         </div>
 
@@ -1908,6 +1911,22 @@
       <button type="button" class="b-btn primary" onclick="saveCustomProperty()" style="background:var(--accent);color:var(--primary);font-weight:700">
         💾 <span class="ja">保存して試算</span><span class="en">Save &amp; Simulate</span>
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ IRR BREAKDOWN MODAL ============ -->
+<div class="modal-overlay" id="irrBreakdownModal" onclick="if(event.target===this)closeIrrBreakdown()">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header">
+      <div>
+        <h2><span class="ja">IRR 計算の詳細</span><span class="en">IRR Calculation Details</span></h2>
+        <div class="subtitle"><span class="ja">この IRR がどう導かれたか — ステップ毎の内訳</span><span class="en">How this IRR is derived — step by step</span></div>
+      </div>
+      <button class="modal-close" onclick="closeIrrBreakdown()">✕</button>
+    </div>
+    <div class="modal-body" id="irrBreakdownBody" style="font-size:13px; line-height:1.6;">
+      <!-- Populated by openIrrBreakdown() -->
     </div>
   </div>
 </div>
@@ -2295,6 +2314,120 @@ function updateCustomPresetActions(key) {
   } else {
     wrap.style.display = "none";
   }
+}
+
+function closeIrrBreakdown() {
+  const m = document.getElementById("irrBreakdownModal");
+  if (m) m.classList.remove("open");
+  document.body.style.overflow = "";
+}
+function openIrrBreakdown() {
+  const m = document.getElementById("irrBreakdownModal");
+  const body = document.getElementById("irrBreakdownBody");
+  if (!m || !body) return;
+  const inp = getInputs();
+  const r = calculate(inp);
+  const fmtN = (n) => Math.round(n).toLocaleString();
+  const fmtPctV = (n) => (n * 100).toFixed(2) + "%";
+
+  // Cash flow timeline string
+  const cf = r.cashflowSeries || [];
+  const cfRows = cf.map((v, i) => `<tr>
+    <td style="padding:4px 8px;">${i === 0 ? "<strong>0 (購入時 / Purchase)</strong>" : `${i}年目末 / End of Year ${i}`}</td>
+    <td style="padding:4px 8px; text-align:right; font-family:monospace; color:${v >= 0 ? 'var(--positive)' : 'var(--negative)'};">${v >= 0 ? '+' : ''}${fmtN(v)} AED</td>
+  </tr>`).join("");
+
+  // Loan annual payment
+  const loan = r.loanAmount || 0;
+  const loanInfo = inp.useMortgage && loan > 0
+    ? `${fmtN(loan)} AED × ${inp.mortgageRate}% / ${inp.mortgageTerm}年 = 年間 <strong>${fmtN(r.annualLoanPayment)} AED</strong>`
+    : "ローンなし / No loan";
+
+  body.innerHTML = `
+    <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:14px 18px; margin-bottom:16px;">
+      <h3 style="margin:0 0 10px; font-size:14px; color:var(--primary);">📋 <span class="ja">入力データ</span><span class="en">Inputs</span></h3>
+      <table style="width:100%; font-size:12px;">
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">物件価格 / Price</td><td style="text-align:right;font-family:monospace;"><strong>${fmtN(inp.price)} AED</strong></td></tr>
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">面積 / Size</td><td style="text-align:right;font-family:monospace;">${fmtN(inp.sqft)} sqft</td></tr>
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">LTV</td><td style="text-align:right;font-family:monospace;">${inp.ltv}% (借入 ${fmtN(loan)} AED)</td></tr>
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">ローン / Loan</td><td style="text-align:right;font-family:monospace;">${loanInfo}</td></tr>
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">グロス利回り / Gross yield</td><td style="text-align:right;font-family:monospace;">${inp.grossYield}% → 年間賃料 ${fmtN(r.grossRent)} AED</td></tr>
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">空室率 / Vacancy</td><td style="text-align:right;font-family:monospace;">${inp.vacancy}% → -${fmtN(r.vacancyLoss)} AED/年</td></tr>
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">PM費 / PM fee</td><td style="text-align:right;font-family:monospace;">${inp.pmFee}% → -${fmtN(r.pmFee)} AED/年</td></tr>
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">サービスチャージ / SC</td><td style="text-align:right;font-family:monospace;">${inp.serviceChargePsf} × ${fmtN(inp.sqft)} = -${fmtN(r.serviceCharge)} AED/年</td></tr>
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">累計値上がり / Appreciation</td><td style="text-align:right;font-family:monospace;">${inp.appreciation}%</td></tr>
+        <tr><td style="padding:3px 8px;color:var(--text-muted)">保有期間 / Hold</td><td style="text-align:right;font-family:monospace;">${inp.holdYears}年 + ${inp.holdQuarters || 0}Q (= ${(inp.holdYears * 4 + (inp.holdQuarters || 0)) / 4}年)</td></tr>
+      </table>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:14px 18px; margin-bottom:16px;">
+      <h3 style="margin:0 0 10px; font-size:14px; color:var(--primary);">💰 <span class="ja">Step 1 — 初期手出し（Year 0）</span><span class="en">Step 1 — Initial outlay (Year 0)</span></h3>
+      <table style="width:100%; font-size:12px;">
+        <tr><td style="padding:3px 8px;">頭金 / Down payment</td><td style="text-align:right;font-family:monospace;">${fmtN(r.cashDown)} AED</td></tr>
+        <tr><td style="padding:3px 8px;">DLD登記料 (4% + 580)</td><td style="text-align:right;font-family:monospace;">${fmtN(r.dld)} AED</td></tr>
+        <tr><td style="padding:3px 8px;">エージェント手数料 (2.1%)</td><td style="text-align:right;font-family:monospace;">${fmtN(r.agentFee)} AED</td></tr>
+        <tr><td style="padding:3px 8px;">Trustee/Title/Oqood</td><td style="text-align:right;font-family:monospace;">${fmtN(r.trustee + r.titleDeed + r.oqood)} AED</td></tr>
+        <tr><td style="padding:3px 8px;">NOC</td><td style="text-align:right;font-family:monospace;">${fmtN(r.noc)} AED</td></tr>
+        ${inp.useMortgage ? `<tr><td style="padding:3px 8px;">モーゲージ登記 + ブローカー手数料</td><td style="text-align:right;font-family:monospace;">${fmtN(r.mortgageReg + r.brokerFee)} AED</td></tr>` : ''}
+        ${inp.furniture > 0 ? `<tr><td style="padding:3px 8px;">家具家電</td><td style="text-align:right;font-family:monospace;">${fmtN(r.furniture)} AED</td></tr>` : ''}
+        <tr style="border-top:1px solid var(--border);"><td style="padding:6px 8px; font-weight:700;">合計 / Total</td><td style="text-align:right;font-family:monospace; font-weight:700; color:var(--negative)">-${fmtN(r.initialCashAED)} AED</td></tr>
+      </table>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:14px 18px; margin-bottom:16px;">
+      <h3 style="margin:0 0 10px; font-size:14px; color:var(--primary);">📈 <span class="ja">Step 2 — 年間ネット運用キャッシュフロー</span><span class="en">Step 2 — Annual Operating Net CF</span></h3>
+      <table style="width:100%; font-size:12px;">
+        <tr><td style="padding:3px 8px;">グロス賃料 = ${fmtN(inp.price)} × ${inp.grossYield}%</td><td style="text-align:right;font-family:monospace;">+${fmtN(r.grossRent)}</td></tr>
+        <tr><td style="padding:3px 8px;">- 空室損 (${inp.vacancy}%)</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.vacancyLoss)}</td></tr>
+        <tr><td style="padding:3px 8px;">- PM費 (${inp.pmFee}%)</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.pmFee)}</td></tr>
+        <tr><td style="padding:3px 8px;">- サービスチャージ</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.serviceCharge)}</td></tr>
+        ${inp.useMortgage ? `<tr><td style="padding:3px 8px;">- ローン年間返済</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.annualLoanPayment)}</td></tr>` : ''}
+        <tr style="border-top:1px solid var(--border);"><td style="padding:6px 8px; font-weight:700;">年間ネットCF</td><td style="text-align:right;font-family:monospace; font-weight:700; color:${r.annualNetCF >= 0 ? 'var(--positive)' : 'var(--negative)'}">${r.annualNetCF >= 0 ? '+' : ''}${fmtN(r.annualNetCF)} AED</td></tr>
+      </table>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:14px 18px; margin-bottom:16px;">
+      <h3 style="margin:0 0 10px; font-size:14px; color:var(--primary);">🏷️ <span class="ja">Step 3 — 売却時ネット</span><span class="en">Step 3 — Net Sale Proceeds</span></h3>
+      <table style="width:100%; font-size:12px;">
+        <tr><td style="padding:3px 8px;">売却価格 = ${fmtN(inp.price)} × (1 + ${inp.appreciation}%)</td><td style="text-align:right;font-family:monospace;">+${fmtN(r.salePrice)}</td></tr>
+        <tr><td style="padding:3px 8px;">- 売却エージェント手数料 (2.1%)</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.saleAgentFee)}</td></tr>
+        <tr><td style="padding:3px 8px;">- NOC</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.saleNOC)}</td></tr>
+        ${r.remainingLoan > 0 ? `<tr><td style="padding:3px 8px;">- 残債一括返済</td><td style="text-align:right;font-family:monospace;color:var(--negative)">-${fmtN(r.remainingLoan)}</td></tr>` : ''}
+        <tr style="border-top:1px solid var(--border);"><td style="padding:6px 8px; font-weight:700;">売却時ネット</td><td style="text-align:right;font-family:monospace; font-weight:700; color:var(--positive)">+${fmtN(r.netSaleProceeds)} AED</td></tr>
+      </table>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:14px 18px; margin-bottom:16px;">
+      <h3 style="margin:0 0 10px; font-size:14px; color:var(--primary);">📊 <span class="ja">Step 4 — キャッシュフロー時系列</span><span class="en">Step 4 — Cash Flow Timeline</span></h3>
+      <table style="width:100%; font-size:12px;">
+        <thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:4px 8px;">時点 / Year</th><th style="text-align:right;padding:4px 8px;">CF (AED)</th></tr></thead>
+        <tbody>${cfRows}</tbody>
+      </table>
+      <p style="margin-top:8px; font-size:11px; color:var(--text-muted);">
+        <span class="ja">※ Year 0 は購入時の手出し（マイナス）。最終年に売却ネットが含まれます。</span>
+        <span class="en">※ Year 0 is the initial outlay (negative). Final year includes sale net.</span>
+      </p>
+    </div>
+
+    <div style="background:#fef9e7; border:1px solid #fde68a; border-radius:8px; padding:14px 18px;">
+      <h3 style="margin:0 0 10px; font-size:14px; color:var(--primary);">🧮 <span class="ja">Step 5 — IRR 計算</span><span class="en">Step 5 — IRR Computation</span></h3>
+      <p><span class="ja">IRR とは、上記キャッシュフローの<strong>正味現在価値（NPV）= 0</strong> となる年率 r のこと。</span><span class="en">IRR is the annualized rate r that makes the <strong>NPV of the above cash flows = 0</strong>.</span></p>
+      <div style="background:#fff; border:1px solid var(--border); border-radius:6px; padding:10px 14px; font-family:monospace; font-size:12px; margin:8px 0; overflow-x:auto;">
+        NPV = Σ ( CF<sub>t</sub> / (1+r)<sup>t</sup> ) = 0&nbsp;&nbsp;&nbsp; (t = 0, 1, 2, ..., ${cf.length - 1})
+      </div>
+      <p><span class="ja">Newton-Raphson 法で解を反復計算した結果：</span><span class="en">Solving via Newton-Raphson:</span></p>
+      <div style="text-align:center; margin:12px 0;">
+        <span style="font-size:24px; font-weight:700; color:var(--primary);">IRR = ${fmtPctV(r.irr)}</span>
+        <span style="font-size:14px; color:var(--text-muted); margin-left:12px;">Multiple = ${r.multiple.toFixed(2)}×</span>
+      </div>
+      <p style="font-size:12px; color:var(--text-muted);">
+        <span class="ja">直感的には、初期手出し ${fmtN(r.initialCashAED)} AED を年率 ${fmtPctV(r.irr)} で複利運用した場合と同じ結果になる、ということです。</span>
+        <span class="en">Intuitively, this means the initial ${fmtN(r.initialCashAED)} AED compounding at ${fmtPctV(r.irr)} annually would yield the same total return.</span>
+      </p>
+    </div>
+  `;
+  m.classList.add("open");
+  document.body.style.overflow = "hidden";
 }
 
 function openCustomPropertyModal() {
