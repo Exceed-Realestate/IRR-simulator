@@ -2871,21 +2871,43 @@ function render() {
   document.getElementById("kpiIrr").textContent = fmtPct(r.irr);
   document.getElementById("kpiMultiple").textContent = fmtMult(r.multiple);
 
-  // V2: also compute & display operating-only IRR alongside total IRR
+  // V2: replace the IRR card with side-by-side dual display
   if (VF.dualIRR && r.cashflowSeries) {
-    const inpForOp = inp;
-    const purchaseQabs2 = (inpForOp.purchaseYear || new Date().getFullYear()) * 4 + ((inpForOp.purchaseQuarter || 1) - 1);
-    const handoverQabs2 = (inpForOp.completionYear || new Date().getFullYear()) * 4 + ((inpForOp.completionQuarter || 1) - 1);
+    const purchaseQabs2 = (inp.purchaseYear || new Date().getFullYear()) * 4 + ((inp.purchaseQuarter || 1) - 1);
+    const handoverQabs2 = (inp.completionYear || new Date().getFullYear()) * 4 + ((inp.completionQuarter || 1) - 1);
     const opStartIdx = Math.max(0, handoverQabs2 - purchaseQabs2);
     const opStartYearIdx = Math.ceil(opStartIdx / 4);
     // Operating cf = initial outlay + cf from opStartYearIdx onward
     const opCf = [r.cashflowSeries[0]];
     for (let i = opStartYearIdx + 1; i < r.cashflowSeries.length; i++) opCf.push(r.cashflowSeries[i]);
     const opIrr = irr(opCf);
-    const subEl = document.getElementById("kpiMultiple");
-    if (subEl && isFinite(opIrr)) {
-      subEl.innerHTML = `× ${fmtMult(r.multiple).replace("×","")} <span style="display:block;font-size:11px;margin-top:2px;color:rgba(255,255,255,0.85)">運用IRR: ${fmtPct(opIrr)}</span>`;
+    const card = document.getElementById("kpiIrr").parentElement;
+    if (card && !card.dataset.dualified) {
+      card.dataset.dualified = "1";
+      card.innerHTML = `
+        <div class="kpi-label" style="margin-bottom:6px"><span class="ja">年率リターン IRR</span><span class="en">Annualized IRR</span></div>
+        <div style="display:flex; gap:14px; align-items:flex-start;">
+          <div style="flex:1; border-right:1px solid rgba(255,255,255,0.25); padding-right:12px;">
+            <div style="font-size:10px; opacity:0.85; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:2px;">
+              <span class="ja">総合</span><span class="en">Total</span>
+            </div>
+            <div id="kpiIrr" style="font-size:20px; font-weight:700; font-variant-numeric:tabular-nums;">—</div>
+            <div id="kpiMultiple" style="font-size:11px; opacity:0.8; margin-top:2px;">× —</div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:10px; opacity:0.85; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:2px;">
+              <span class="ja">運用のみ</span><span class="en">Operating</span>
+            </div>
+            <div id="kpiOpIrr" style="font-size:20px; font-weight:700; font-variant-numeric:tabular-nums;">—</div>
+            <div style="font-size:11px; opacity:0.8; margin-top:2px;"><span class="ja">引渡後</span><span class="en">Post-handover</span></div>
+          </div>
+        </div>
+      `;
     }
+    document.getElementById("kpiIrr").textContent = fmtPct(r.irr);
+    document.getElementById("kpiMultiple").textContent = fmtMult(r.multiple);
+    const opIrrEl = document.getElementById("kpiOpIrr");
+    if (opIrrEl) opIrrEl.textContent = isFinite(opIrr) ? fmtPct(opIrr) : fmtPct(r.irr);
   }
 
   const s = r.scenarios;
