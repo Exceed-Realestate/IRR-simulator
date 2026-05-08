@@ -1785,11 +1785,6 @@
           </table>
         </div>
 
-        <div class="sim-card" id="card-chart">
-          <h3><span class="count">D</span><span class="ja">累積キャッシュフロー チャート</span><span class="en">Cumulative Cash Flow Chart</span></h3>
-          <div class="chart-container"><canvas id="cumulativeChart"></canvas></div>
-        </div>
-
         <div class="note">
           <div class="lang-ja">
             <strong>前提：</strong>DLD 4%、エージェント 2%+VAT、Trustee AED 4,000、NOC AED 5,000、モーゲージ登記 0.25%、売却エージェント 2.1%、UAE CGT 0%、HK属地主義で非課税。
@@ -2139,25 +2134,17 @@ const demoSteps = [
     delay: 5500
   },
   {
-    target: '#card-chart',
-    title_ja: 'STEP 10 ｜ 累積キャッシュフローチャート',
-    title_en: 'STEP 10 · Cumulative cash flow chart',
-    text_ja: '保有期間中の累積収支が一目でわかります。お客様への提案資料の最強の説明素材です。',
-    text_en: 'Visualize the running cash position across the hold. The single most-persuasive chart for a client pitch.',
-    delay: 4500
-  },
-  {
     target: 'button[onclick="generateReport()"]',
-    title_ja: 'STEP 11 ｜ レポート生成',
-    title_en: 'STEP 11 · Generate the report',
+    title_ja: 'STEP 10 ｜ レポート生成',
+    title_en: 'STEP 10 · Generate the report',
     text_ja: '「レポート生成」を押すと、お客様向けの完成された PDF レポートが画面に表示されます。',
     text_en: 'Click "Generate Report" to produce a polished client-ready PDF in one click.',
     delay: 4500
   },
   {
     target: '#pdfBtn',
-    title_ja: 'STEP 12 ｜ PDFダウンロード',
-    title_en: 'STEP 12 · Download as PDF',
+    title_ja: 'STEP 11 ｜ PDFダウンロード',
+    title_en: 'STEP 11 · Download as PDF',
     text_ja: 'シミュレーター画面そのものを PDF として保存。社内共有やお客様へのメール添付に使えます。',
     text_en: 'Save the whole simulator state as a PDF — share internally or attach to client emails.',
     delay: 4500
