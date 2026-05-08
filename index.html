@@ -1377,8 +1377,8 @@
   <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px;">
     <button class="demo-button" onclick="runDemo()">
       <span class="play-icon">▶</span>
-      <span class="ja">使い方を30秒で見る</span>
-      <span class="en">See how it works (30s)</span>
+      <span class="ja">使い方を詳しく見る</span>
+      <span class="en">Full walkthrough</span>
     </button>
     <button class="nav-brochure-btn" onclick="openBrochureModal()" style="margin-left:0;">
       <span class="ja">物件資料</span><span class="en">Brochures</span>
@@ -1740,7 +1740,7 @@
           <div id="chartWrap" class="chart-container small"><canvas id="scenarioChart"></canvas></div>
         </div>
 
-        <div class="sim-card">
+        <div class="sim-card" id="card-outlay">
           <h3><span class="count">A</span><span class="ja">初期手出し内訳</span><span class="en">Initial Outlay Breakdown</span></h3>
           <table class="data-table">
             <thead><tr><th><span class="ja">項目</span><span class="en">Item</span></th><th class="num">AED</th><th class="num"><span class="cur-label">HKD</span></th><th><span class="ja">備考</span><span class="en">Notes</span></th></tr></thead>
@@ -1748,7 +1748,7 @@
           </table>
         </div>
 
-        <div class="sim-card">
+        <div class="sim-card" id="card-cashflow">
           <h3><span class="count">B</span><span class="ja">年次キャッシュフロー</span><span class="en">Annual Cash Flow</span></h3>
           <table class="data-table">
             <thead><tr>
@@ -1785,7 +1785,7 @@
           </table>
         </div>
 
-        <div class="sim-card">
+        <div class="sim-card" id="card-chart">
           <h3><span class="count">D</span><span class="ja">累積キャッシュフロー チャート</span><span class="en">Cumulative Cash Flow Chart</span></h3>
           <div class="chart-container"><canvas id="cumulativeChart"></canvas></div>
         </div>
@@ -2067,44 +2067,100 @@ const demoSteps = [
     target: '.nav-brochure-btn',
     title_ja: 'STEP 1 ｜ 物件を選ぶ',
     title_en: 'STEP 1 · Browse properties',
-    text_ja: '右上の「物件資料」ボタンをクリックすると、8物件のリストがモーダルで表示されます。',
-    text_en: 'Click "Brochures" top right to see all 8 listings in a modal.',
+    text_ja: '右上の「物件資料」ボタンを押すと、8物件のリストがモーダルで開きます。',
+    text_en: 'Click "Brochures" (top right) to see all 8 listings in a modal.',
     action: () => { setTimeout(() => openBrochureModal(), 600); },
-    delay: 3000
+    delay: 3500
   },
   {
     target: '.modal .brochure-card:nth-child(4)',
     title_ja: 'STEP 2 ｜「試算」ボタンで自動反映',
-    title_en: 'STEP 2 · Click "Simulate" — auto-loads',
-    text_ja: '気になる物件の「試算」ボタンを押すと、シミュレーターに自動的に反映されます。',
-    text_en: 'Click "Simulate" on any property — it loads into the simulator automatically.',
+    title_en: 'STEP 2 · "Simulate" auto-loads the property',
+    text_ja: '気になる物件の「試算」ボタンを押すと、価格・面積・SCなどシミュレーターへ自動反映されます。',
+    text_en: 'Click "Simulate" on any card — price, sqft, service charge auto-fill into the simulator.',
     action: () => { setTimeout(() => loadPreset('sixSenses3'), 1200); },
-    delay: 3500
+    delay: 4000
+  },
+  {
+    target: '.input-panel .sim-card:nth-child(1)',
+    title_ja: 'STEP 3 ｜ 物件情報を編集',
+    title_en: 'STEP 3 · Edit the property',
+    text_ja: 'プリセット以外の物件は、価格・面積・サービスチャージ・購入時期を直接編集できます。',
+    text_en: 'For off-list deals, edit price, sqft, service charge and purchase timing directly here.',
+    delay: 4000
   },
   {
     target: '.input-panel .sim-card:nth-child(2)',
-    title_ja: 'STEP 3 ｜ ローン条件を調整',
-    title_en: 'STEP 3 · Adjust loan terms',
-    text_ja: 'LTV・金利・保有期間を変更すると、結果がリアルタイム更新されます。',
-    text_en: 'Change LTV, rate, and holding period — results update live.',
+    title_ja: 'STEP 4 ｜ ローン条件',
+    title_en: 'STEP 4 · Loan terms',
+    text_ja: 'LTV・金利・保有期間を変更すると、すべての結果がライブ更新されます。',
+    text_en: 'Change LTV, rate, and holding period — every output below updates live.',
     action: () => { setTimeout(() => animateInput('ltv', 50, 65), 600); },
-    delay: 3500
+    delay: 4500
+  },
+  {
+    target: '.input-panel .sim-card:nth-child(3)',
+    title_ja: 'STEP 5 ｜ 運用前提',
+    title_en: 'STEP 5 · Operating assumptions',
+    text_ja: '想定家賃利回り、空室率、PM費、保守費を調整。保守的・楽観的シナリオを瞬時に試せます。',
+    text_en: 'Set gross yield, vacancy, PM fee, and maintenance — toggle between conservative and aggressive views.',
+    delay: 4500
+  },
+  {
+    target: '.input-panel .sim-card:nth-child(4)',
+    title_ja: 'STEP 6 ｜ 売却前提',
+    title_en: 'STEP 6 · Sale assumptions',
+    text_ja: '年率値上がり率と家具設備費を調整。Dubai は年5–8%が一般的なベースラインです。',
+    text_en: 'Set the annual appreciation rate and furniture cost. Dubai baseline is typically 5–8% p.a.',
+    delay: 4500
   },
   {
     target: '.kpi-grid',
-    title_ja: 'STEP 4 ｜ 主要KPIをチェック',
-    title_en: 'STEP 4 · Check the KPIs',
-    text_ja: '初期手出し・売却額・IRR・着金額が選択通貨（HKD/USD/JPY/EUR/CNY/KRW/INR/RUB）で即座に算出されます。',
-    text_en: 'Initial outlay, sale price, IRR and net proceeds update instantly in the selected currency (HKD/USD/JPY/EUR/CNY/KRW/INR/RUB).',
-    delay: 3500
+    title_ja: 'STEP 7 ｜ 主要KPI',
+    title_en: 'STEP 7 · Top-line KPIs',
+    text_ja: '初期手出し・売却ターゲット・IRR・着金額が選択通貨（8通貨対応）で即座に算出されます。',
+    text_en: 'Initial outlay, sale target, IRR, and net proceeds — instant, in 8 currencies.',
+    delay: 4500
   },
   {
     target: '.scenario-grid',
-    title_ja: 'STEP 5 ｜ 3シナリオ比較',
-    title_en: 'STEP 5 · Compare 3 exit scenarios',
-    text_ja: 'オフプラン売却・引渡後短期・中長期保有の3つを横並びで比較できます。',
-    text_en: 'Off-plan flip, post-handover short, and long-term hold — side by side.',
-    delay: 3500
+    title_ja: 'STEP 8 ｜ 3シナリオ比較',
+    title_en: 'STEP 8 · Three exit scenarios',
+    text_ja: 'オフプラン売却・引渡後短期・中長期保有 — 3つを横並びで一目比較。',
+    text_en: 'Off-plan flip vs. post-handover short vs. long-term hold — side by side.',
+    delay: 4500
+  },
+  {
+    target: '#card-cashflow',
+    title_ja: 'STEP 9 ｜ 年次キャッシュフロー',
+    title_en: 'STEP 9 · Annual cash flow',
+    text_ja: '年ごとの賃料・空室・PM費・ローン返済・ネットCFが表で確認できます。Dubaiの「残期間1年未満は新規賃貸不可」ルールも切替可能。',
+    text_en: 'Year-by-year rent, vacancy, PM, loan and net cash flow. Toggle the Dubai 1-year-residual lease rule on or off.',
+    delay: 5500
+  },
+  {
+    target: '#card-chart',
+    title_ja: 'STEP 10 ｜ 累積キャッシュフローチャート',
+    title_en: 'STEP 10 · Cumulative cash flow chart',
+    text_ja: '保有期間中の累積収支が一目でわかります。お客様への提案資料の最強の説明素材です。',
+    text_en: 'Visualize the running cash position across the hold. The single most-persuasive chart for a client pitch.',
+    delay: 4500
+  },
+  {
+    target: 'button[onclick="generateReport()"]',
+    title_ja: 'STEP 11 ｜ レポート生成',
+    title_en: 'STEP 11 · Generate the report',
+    text_ja: '「レポート生成」を押すと、お客様向けの完成された PDF レポートが画面に表示されます。',
+    text_en: 'Click "Generate Report" to produce a polished client-ready PDF in one click.',
+    delay: 4500
+  },
+  {
+    target: '#pdfBtn',
+    title_ja: 'STEP 12 ｜ PDFダウンロード',
+    title_en: 'STEP 12 · Download as PDF',
+    text_ja: 'シミュレーター画面そのものを PDF として保存。社内共有やお客様へのメール添付に使えます。',
+    text_en: 'Save the whole simulator state as a PDF — share internally or attach to client emails.',
+    delay: 4500
   }
 ];
 
